@@ -33,15 +33,10 @@ async function executeQuery(sql, binds = {}, options = {}) {
 }
 
 app.get("/games", async (req, res) => {
-    try {
-        const sql = `SELECT * FROM GAMES`;
-        const data = await executeQuery(sql);
-        res.json(data);
-    } catch (err) {
-        res.status(500).json({ error: "서버 오류" });
-    }
+    res.json([
+        { id: 1, title: "테스트 게임" }
+    ]);
 });
-
 app.get("/games/search", async (req, res) => {
     const { title } = req.query;
 
