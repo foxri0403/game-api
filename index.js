@@ -174,3 +174,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`서버 실행 중: ${PORT}`);
 });
+app.get("/", (req, res) => {
+    res.send("서버 살아있음");
+});
