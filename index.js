@@ -73,3 +73,23 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`서버 실행 중: ${PORT}`);
 });
+
+app.get("/init", async (req, res) => {
+    try {
+        await executeQuery(`
+            CREATE TABLE IF NOT EXISTS GAMES (
+                GAME_ID SERIAL PRIMARY KEY,
+                TITLE VARCHAR(200) NOT NULL
+            );
+        `);
+
+        await executeQuery(`
+            INSERT INTO GAMES (TITLE) VALUES ('Elden Ring');
+        `);
+
+        res.send("테이블 생성 완료!");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("실패");
+    }
+});
