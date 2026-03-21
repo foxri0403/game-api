@@ -14,7 +14,7 @@
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "oracledb": "^6.10.0"
+    "oracledb": "^6.10.0",
+    "pg": "^8.20.0"
   }
-  
 }
