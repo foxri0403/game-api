@@ -9,6 +9,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// public 폴더의 정적 파일(html, css 등) 사용
 app.use(express.static(path.join(__dirname, "public")));
 
 // PostgreSQL 연결
@@ -23,14 +25,9 @@ async function executeQuery(sql, params = []) {
   return result.rows;
 }
 
-// 메인 페이지
+// 메인 홈페이지
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// 로그인 페이지
-app.get("/login", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
 // 회원가입 페이지
@@ -38,16 +35,21 @@ app.get("/signup", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "signup.html"));
 });
 
-// DB 테스트
+// 로그인 페이지
+app.get("/login", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+// DB 연결 테스트
 app.get("/test-db", async (req, res) => {
   try {
-    const result = await executeQuery("SELECT NOW()");
+    const result = await pool.query("SELECT NOW()");
     res.json({
       success: true,
-      server_time: result[0]
+      time: result.rows[0]
     });
   } catch (err) {
-    console.error("TEST-DB 오류:", err);
+    console.error("DB 연결 테스트 오류:", err);
     res.status(500).json({
       success: false,
       error: err.message
@@ -55,14 +57,14 @@ app.get("/test-db", async (req, res) => {
   }
 });
 
-// 초기 테이블 생성
+// DB 초기화 및 테이블 생성
 app.get("/init", async (req, res) => {
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
 
-    // users
+    // users 테이블
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         user_id SERIAL PRIMARY KEY,
@@ -73,7 +75,7 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // games
+    // games 테이블
     await client.query(`
       CREATE TABLE IF NOT EXISTS games (
         game_id SERIAL PRIMARY KEY,
@@ -84,7 +86,7 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // platforms
+    // platforms 테이블
     await client.query(`
       CREATE TABLE IF NOT EXISTS platforms (
         platform_id SERIAL PRIMARY KEY,
@@ -93,7 +95,7 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // prices
+    // prices 테이블
     await client.query(`
       CREATE TABLE IF NOT EXISTS prices (
         price_id SERIAL PRIMARY KEY,
@@ -109,7 +111,7 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // price_history
+    // price_history 테이블
     await client.query(`
       CREATE TABLE IF NOT EXISTS price_history (
         history_id SERIAL PRIMARY KEY,
@@ -125,7 +127,7 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // wishlist
+    // wishlist 테이블
     await client.query(`
       CREATE TABLE IF NOT EXISTS wishlist (
         wishlist_id SERIAL PRIMARY KEY,
@@ -140,7 +142,7 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // alerts
+    // alerts 테이블
     await client.query(`
       CREATE TABLE IF NOT EXISTS alerts (
         alert_id SERIAL PRIMARY KEY,
@@ -166,7 +168,7 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // games.title UNIQUE 추가
+    // games.title UNIQUE 제약 추가
     await client.query(`
       DO $$
       BEGIN
@@ -182,7 +184,7 @@ app.get("/init", async (req, res) => {
       $$;
     `);
 
-    // 기본 플랫폼
+    // 기본 플랫폼 데이터 삽입
     await client.query(`
       INSERT INTO platforms (name, region)
       VALUES
@@ -192,7 +194,7 @@ app.get("/init", async (req, res) => {
       ON CONFLICT (name) DO NOTHING;
     `);
 
-    // 기본 게임
+    // 기본 게임 데이터 삽입
     await client.query(`
       INSERT INTO games (title, genre)
       VALUES ('Elden Ring', 'RPG')
@@ -241,7 +243,6 @@ app.post("/api/signup", async (req, res) => {
       });
     }
 
-    // 비밀번호 해시
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
@@ -322,8 +323,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// 유저 목록 확인용 (비밀번호 해시 포함 확인 가능)
-// 실제 서비스에서는 비활성화 권장
+// 사용자 목록 확인용
 app.get("/users", async (req, res) => {
   try {
     const data = await executeQuery(`
