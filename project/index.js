@@ -11,108 +11,75 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
+// PostgreSQL 연결
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
+// 공통 쿼리 함수
 async function executeQuery(sql, params = []) {
   const result = await pool.query(sql, params);
   return result.rows;
 }
 
+// 메인 홈페이지
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+// 회원가입 페이지
 app.get("/signup", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "signup.html"));
 });
 
+// 로그인 페이지
 app.get("/login", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
+// DB 연결 테스트
 app.get("/test-db", async (req, res) => {
   try {
     const result = await pool.query("SELECT NOW()");
-    res.json({ success: true, time: result.rows[0] });
+    res.json({
+      success: true,
+      time: result.rows[0]
+    });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error("DB 연결 테스트 오류:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
   }
 });
 
+// DB 초기화
 app.get("/init", async (req, res) => {
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
 
-    // users 테이블이 없으면 생성
+    // users를 참조하는 테이블 먼저 삭제
+    await client.query(`DROP TABLE IF EXISTS alerts CASCADE;`);
+    await client.query(`DROP TABLE IF EXISTS wishlist CASCADE;`);
+
+    // users 테이블 완전 삭제 후 다시 생성
+    await client.query(`DROP TABLE IF EXISTS users CASCADE;`);
+
     await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE users (
         user_id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
         username VARCHAR(100) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // password_hash 컬럼이 없으면 추가
-    await client.query(`
-      ALTER TABLE users
-      ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
-    `);
-
-    // 예전 password 컬럼이 있고 password_hash가 비어 있으면 복사
-    await client.query(`
-      DO $$
-      BEGIN
-        IF EXISTS (
-          SELECT 1
-          FROM information_schema.columns
-          WHERE table_name = 'users'
-            AND column_name = 'password'
-        ) THEN
-          UPDATE users
-          SET password_hash = password
-          WHERE password_hash IS NULL;
-        END IF;
-      END
-      $$;
-    `);
-
-    // username이 nullable일 수 있으니 기본값 보정
-    await client.query(`
-      UPDATE users
-      SET username = 'user_' || user_id
-      WHERE username IS NULL OR username = '';
-    `);
-
-    // password_hash가 null인 행이 있으면 임시 해시값 넣기
-    // 기존 데이터 깨지지 않게 하기 위한 안전장치
-    const fallbackHash = await bcrypt.hash("temp_password_1234", 10);
-    await client.query(
-      `
-      UPDATE users
-      SET password_hash = $1
-      WHERE password_hash IS NULL OR password_hash = '';
-      `,
-      [fallbackHash]
-    );
-
-    // NOT NULL 제약 적용
-    await client.query(`
-      ALTER TABLE users
-      ALTER COLUMN password_hash SET NOT NULL;
-    `);
-
-    await client.query(`
-      ALTER TABLE users
-      ALTER COLUMN username SET NOT NULL;
-    `);
-
-    // games
+    // games 테이블
     await client.query(`
       CREATE TABLE IF NOT EXISTS games (
         game_id SERIAL PRIMARY KEY,
@@ -133,7 +100,7 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // games.title unique
+    // games.title UNIQUE 제약 추가
     await client.query(`
       DO $$
       BEGIN
@@ -149,7 +116,7 @@ app.get("/init", async (req, res) => {
       $$;
     `);
 
-    // platforms
+    // platforms 테이블
     await client.query(`
       CREATE TABLE IF NOT EXISTS platforms (
         platform_id SERIAL PRIMARY KEY,
@@ -158,13 +125,13 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // prices
+    // prices 테이블
     await client.query(`
       CREATE TABLE IF NOT EXISTS prices (
         price_id SERIAL PRIMARY KEY,
         game_id INTEGER NOT NULL,
         platform_id INTEGER NOT NULL,
-        price NUMERIC(10,2) NOT NULL,
+        price NUMERIC(10, 2) NOT NULL,
         currency VARCHAR(10) DEFAULT 'KRW',
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT fk_prices_game
@@ -174,9 +141,25 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // wishlist
+    // price_history 테이블
     await client.query(`
-      CREATE TABLE IF NOT EXISTS wishlist (
+      CREATE TABLE IF NOT EXISTS price_history (
+        history_id SERIAL PRIMARY KEY,
+        game_id INTEGER NOT NULL,
+        platform_id INTEGER NOT NULL,
+        old_price NUMERIC(10, 2),
+        new_price NUMERIC(10, 2),
+        changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_history_game
+          FOREIGN KEY (game_id) REFERENCES games(game_id) ON DELETE CASCADE,
+        CONSTRAINT fk_history_platform
+          FOREIGN KEY (platform_id) REFERENCES platforms(platform_id) ON DELETE CASCADE
+      );
+    `);
+
+    // wishlist 테이블 다시 생성
+    await client.query(`
+      CREATE TABLE wishlist (
         wishlist_id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
         game_id INTEGER NOT NULL,
@@ -189,13 +172,13 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // alerts
+    // alerts 테이블 다시 생성
     await client.query(`
-      CREATE TABLE IF NOT EXISTS alerts (
+      CREATE TABLE alerts (
         alert_id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
         game_id INTEGER NOT NULL,
-        target_price NUMERIC(10,2) NOT NULL,
+        target_price NUMERIC(10, 2) NOT NULL,
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT fk_alerts_user
@@ -205,13 +188,17 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // 기본 데이터
+    // 기본 플랫폼 데이터
     await client.query(`
       INSERT INTO platforms (name, region)
-      VALUES ('Steam', 'KR'), ('Epic Games', 'KR'), ('DirectG', 'KR')
+      VALUES
+        ('Steam', 'KR'),
+        ('Epic Games', 'KR'),
+        ('DirectG', 'KR')
       ON CONFLICT (name) DO NOTHING;
     `);
 
+    // 기본 게임 데이터
     await client.query(`
       INSERT INTO games (title, genre)
       VALUES ('Elden Ring', 'RPG')
@@ -222,10 +209,11 @@ app.get("/init", async (req, res) => {
 
     res.json({
       success: true,
-      message: "초기화 완료 - users.password_hash 보정 완료"
+      message: "초기화 완료 (users 테이블 재생성 + password_hash 적용 완료)"
     });
   } catch (err) {
     await client.query("ROLLBACK");
+    console.error("INIT 오류:", err);
     res.status(500).json({
       success: false,
       error: err.message
@@ -235,6 +223,7 @@ app.get("/init", async (req, res) => {
   }
 });
 
+// 회원가입 API
 app.post("/api/signup", async (req, res) => {
   try {
     const { email, password, username } = req.body;
@@ -247,7 +236,7 @@ app.post("/api/signup", async (req, res) => {
     }
 
     const existingUser = await executeQuery(
-      `SELECT user_id FROM users WHERE email = $1`,
+      "SELECT user_id FROM users WHERE email = $1",
       [email]
     );
 
@@ -273,6 +262,7 @@ app.post("/api/signup", async (req, res) => {
       message: "회원가입 성공"
     });
   } catch (err) {
+    console.error("회원가입 오류:", err);
     res.status(500).json({
       success: false,
       error: err.message
@@ -280,12 +270,24 @@ app.post("/api/signup", async (req, res) => {
   }
 });
 
+// 로그인 API
 app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "이메일과 비밀번호를 입력하세요."
+      });
+    }
+
     const users = await executeQuery(
-      `SELECT user_id, email, username, password_hash FROM users WHERE email = $1`,
+      `
+      SELECT user_id, email, username, password_hash
+      FROM users
+      WHERE email = $1
+      `,
       [email]
     );
 
@@ -316,6 +318,7 @@ app.post("/api/login", async (req, res) => {
       }
     });
   } catch (err) {
+    console.error("로그인 오류:", err);
     res.status(500).json({
       success: false,
       error: err.message
@@ -323,6 +326,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+// 사용자 목록 확인용
 app.get("/users", async (req, res) => {
   try {
     const data = await executeQuery(`
@@ -332,11 +336,49 @@ app.get("/users", async (req, res) => {
     `);
     res.json(data);
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error("USERS 오류:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// 게임 목록
+app.get("/games", async (req, res) => {
+  try {
+    const data = await executeQuery(`
+      SELECT * FROM games
+      ORDER BY game_id
+    `);
+    res.json(data);
+  } catch (err) {
+    console.error("GAMES 오류:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// 플랫폼 목록
+app.get("/platforms", async (req, res) => {
+  try {
+    const data = await executeQuery(`
+      SELECT * FROM platforms
+      ORDER BY platform_id
+    `);
+    res.json(data);
+  } catch (err) {
+    console.error("PLATFORMS 오류:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`서버 실행 중: ${PORT}`);
 });
