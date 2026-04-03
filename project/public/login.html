@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>로그인</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>로그인</h1>
+
+    <form id="loginForm" class="card">
+      <input type="email" id="email" placeholder="이메일" required />
+      <input type="password" id="password" placeholder="비밀번호" required />
+      <button type="submit" class="btn">로그인</button>
+    </form>
+
+    <p id="result"></p>
+    <a href="/">메인으로 돌아가기</a>
+  </div>
+
+  <script>
+    const form = document.getElementById("loginForm");
+    const result = document.getElementById("result");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        result.textContent = `${data.user.username}님 로그인 성공`;
+      } else {
+        result.textContent = data.message || data.error;
+      }
+    });
+  </script>
+</body>
+</html>
