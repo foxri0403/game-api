@@ -23,11 +23,32 @@ app.get("/", (req, res) => {
   res.send("🎮 Game API 서버 실행 중!");
 });
 
+// DB 연결 테스트
+app.get("/test-db", async (req, res) => {
+  try {
+    const result = await executeQuery("SELECT NOW()");
+    res.json({
+      success: true,
+      server_time: result[0]
+    });
+  } catch (err) {
+    console.error("TEST-DB 오류:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
 // DB 초기화 및 테이블 생성
 app.get("/init", async (req, res) => {
+  const client = await pool.connect();
+
   try {
-    // 1. users 테이블
-    await executeQuery(`
+    await client.query("BEGIN");
+
+    // 1. users 테이블 생성
+    await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         user_id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
@@ -37,8 +58,8 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // 2. games 테이블
-    await executeQuery(`
+    // 2. games 테이블 생성
+    await client.query(`
       CREATE TABLE IF NOT EXISTS games (
         game_id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
@@ -48,8 +69,8 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // 3. platforms 테이블
-    await executeQuery(`
+    // 3. platforms 테이블 생성
+    await client.query(`
       CREATE TABLE IF NOT EXISTS platforms (
         platform_id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL UNIQUE,
@@ -57,8 +78,8 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // 4. prices 테이블
-    await executeQuery(`
+    // 4. prices 테이블 생성
+    await client.query(`
       CREATE TABLE IF NOT EXISTS prices (
         price_id SERIAL PRIMARY KEY,
         game_id INTEGER NOT NULL,
@@ -73,8 +94,8 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // 5. price_history 테이블
-    await executeQuery(`
+    // 5. price_history 테이블 생성
+    await client.query(`
       CREATE TABLE IF NOT EXISTS price_history (
         history_id SERIAL PRIMARY KEY,
         game_id INTEGER NOT NULL,
@@ -89,8 +110,8 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // 6. wishlist 테이블
-    await executeQuery(`
+    // 6. wishlist 테이블 생성
+    await client.query(`
       CREATE TABLE IF NOT EXISTS wishlist (
         wishlist_id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
@@ -104,8 +125,8 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // 7. alerts 테이블
-    await executeQuery(`
+    // 7. alerts 테이블 생성
+    await client.query(`
       CREATE TABLE IF NOT EXISTS alerts (
         alert_id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
@@ -120,49 +141,100 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // 기본 플랫폼 데이터 삽입
-    await executeQuery(`
+    // 8. games 중복 데이터 삭제
+    // 같은 title이 여러 개 있으면 가장 작은 game_id 하나만 남기고 삭제
+    await client.query(`
+      DELETE FROM games
+      WHERE game_id NOT IN (
+        SELECT MIN(game_id)
+        FROM games
+        GROUP BY title
+      );
+    `);
+
+    // 9. games.title UNIQUE 제약 추가
+    // 이미 있으면 에러 없이 넘어가게 처리
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'unique_game_title'
+        ) THEN
+          ALTER TABLE games
+          ADD CONSTRAINT unique_game_title UNIQUE (title);
+        END IF;
+      END
+      $$;
+    `);
+
+    // 10. 기본 플랫폼 데이터 삽입
+    await client.query(`
       INSERT INTO platforms (name, region)
-      VALUES 
+      VALUES
         ('Steam', 'KR'),
         ('Epic Games', 'KR'),
         ('DirectG', 'KR')
       ON CONFLICT (name) DO NOTHING;
     `);
 
-    // 테스트용 게임 데이터 삽입
-    await executeQuery(`
+    // 11. 테스트용 게임 데이터 삽입
+    await client.query(`
       INSERT INTO games (title, genre)
       VALUES ('Elden Ring', 'RPG')
-      ON CONFLICT DO NOTHING;
+      ON CONFLICT (title) DO NOTHING;
     `);
 
-    res.send("모든 테이블 생성 완료!");
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
+      message: "모든 테이블 생성 완료 + games 중복 삭제 완료 + UNIQUE 적용 완료"
+    });
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("INIT 오류:", err);
-    res.status(500).send("초기화 실패");
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  } finally {
+    client.release();
   }
 });
 
 // 게임 목록 조회
 app.get("/games", async (req, res) => {
   try {
-    const data = await executeQuery("SELECT * FROM games ORDER BY game_id");
+    const data = await executeQuery(`
+      SELECT * FROM games
+      ORDER BY game_id;
+    `);
     res.json(data);
   } catch (err) {
     console.error("GAMES 오류:", err);
-    res.status(500).json({ error: "DB 오류" });
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
   }
 });
 
 // 플랫폼 목록 조회
 app.get("/platforms", async (req, res) => {
   try {
-    const data = await executeQuery("SELECT * FROM platforms ORDER BY platform_id");
+    const data = await executeQuery(`
+      SELECT * FROM platforms
+      ORDER BY platform_id;
+    `);
     res.json(data);
   } catch (err) {
     console.error("PLATFORMS 오류:", err);
-    res.status(500).json({ error: "DB 오류" });
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
   }
 });
 
@@ -170,7 +242,7 @@ app.get("/platforms", async (req, res) => {
 app.get("/prices", async (req, res) => {
   try {
     const data = await executeQuery(`
-      SELECT 
+      SELECT
         p.price_id,
         g.title AS game_title,
         pf.name AS platform_name,
@@ -185,7 +257,10 @@ app.get("/prices", async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error("PRICES 오류:", err);
-    res.status(500).json({ error: "DB 오류" });
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
   }
 });
 
