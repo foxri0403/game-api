@@ -66,7 +66,7 @@ app.get("/init", async (req, res) => {
     await client.query(`DROP TABLE IF EXISTS alerts CASCADE;`);
     await client.query(`DROP TABLE IF EXISTS wishlist CASCADE;`);
 
-    // users 테이블 완전 삭제 후 다시 생성
+    // users 테이블 완전 삭제 후 새 구조로 다시 생성
     await client.query(`DROP TABLE IF EXISTS users CASCADE;`);
 
     await client.query(`
