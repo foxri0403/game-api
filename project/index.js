@@ -9,8 +9,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// public 폴더의 정적 파일(html, css 등) 사용
 app.use(express.static(path.join(__dirname, "public")));
 
 // PostgreSQL 연결
@@ -57,16 +55,22 @@ app.get("/test-db", async (req, res) => {
   }
 });
 
-// DB 초기화 및 테이블 생성
+// DB 초기화
 app.get("/init", async (req, res) => {
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
 
-    // users 테이블
+    // users를 참조하는 테이블 먼저 삭제
+    await client.query(`DROP TABLE IF EXISTS alerts CASCADE;`);
+    await client.query(`DROP TABLE IF EXISTS wishlist CASCADE;`);
+
+    // users 테이블 삭제 후 새 구조로 다시 생성
+    await client.query(`DROP TABLE IF EXISTS users CASCADE;`);
+
     await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE users (
         user_id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
@@ -127,9 +131,9 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // wishlist 테이블
+    // wishlist 테이블 다시 생성
     await client.query(`
-      CREATE TABLE IF NOT EXISTS wishlist (
+      CREATE TABLE wishlist (
         wishlist_id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
         game_id INTEGER NOT NULL,
@@ -142,9 +146,9 @@ app.get("/init", async (req, res) => {
       );
     `);
 
-    // alerts 테이블
+    // alerts 테이블 다시 생성
     await client.query(`
-      CREATE TABLE IF NOT EXISTS alerts (
+      CREATE TABLE alerts (
         alert_id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
         game_id INTEGER NOT NULL,
@@ -184,7 +188,7 @@ app.get("/init", async (req, res) => {
       $$;
     `);
 
-    // 기본 플랫폼 데이터 삽입
+    // 기본 플랫폼 데이터
     await client.query(`
       INSERT INTO platforms (name, region)
       VALUES
@@ -194,7 +198,7 @@ app.get("/init", async (req, res) => {
       ON CONFLICT (name) DO NOTHING;
     `);
 
-    // 기본 게임 데이터 삽입
+    // 기본 게임 데이터
     await client.query(`
       INSERT INTO games (title, genre)
       VALUES ('Elden Ring', 'RPG')
@@ -205,7 +209,7 @@ app.get("/init", async (req, res) => {
 
     res.json({
       success: true,
-      message: "초기화 완료"
+      message: "초기화 완료 (users 테이블 재생성 + password_hash 적용 완료)"
     });
   } catch (err) {
     await client.query("ROLLBACK");
