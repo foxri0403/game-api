@@ -21,28 +21,28 @@
     <a href="/">메인으로 돌아가기</a>
   </div>
 
-  <script>
-    const form = document.getElementById("signupForm");
-    const result = document.getElementById("result");
+ <script>
+  const form = document.getElementById("signupForm");
+  const result = document.getElementById("result");
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-      const username = document.getElementById("username").value;
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
+    const username = document.getElementById("username").value;
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
 
-      const response = await fetch("/api/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ username, email, password })
-      });
-
-      const data = await response.json();
-      result.textContent = data.message || data.error;
+    const response = await fetch("/api/signup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ username, email, password })
     });
-  </script>
+
+    const data = await response.json();
+    result.textContent = data.message || data.error;
+  });
+</script>
 </body>
 </html>

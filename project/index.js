@@ -226,7 +226,14 @@ app.get("/init", async (req, res) => {
 // 회원가입 API
 app.post("/api/signup", async (req, res) => {
   try {
-    const { email, password, username } = req.body;
+    let { email, password, username } = req.body;
+
+    // 공백 제거
+    email = email ? email.trim().toLowerCase() : "";
+    password = password ? password.trim() : "";
+    username = username ? username.trim() : "";
+
+    console.log("회원가입 요청:", { email, username });
 
     if (!email || !password || !username) {
       return res.status(400).json({
@@ -236,9 +243,11 @@ app.post("/api/signup", async (req, res) => {
     }
 
     const existingUser = await executeQuery(
-      "SELECT user_id FROM users WHERE email = $1",
+      "SELECT user_id, email FROM users WHERE LOWER(email) = $1",
       [email]
     );
+
+    console.log("기존 사용자 조회 결과:", existingUser);
 
     if (existingUser.length > 0) {
       return res.status(409).json({
