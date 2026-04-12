@@ -7,17 +7,53 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
+  <!-- 오른쪽 상단 로그인/회원가입 영역 -->
+  <div class="top-bar">
+    <div id="guestMenu">
+      <a class="top-btn" href="/signup">회원가입</a>
+      <a class="top-btn" href="/login">로그인</a>
+    </div>
+
+    <div id="userMenu" style="display: none;">
+      <span id="welcomeText" class="welcome-text"></span>
+      <button id="logoutBtn" class="top-btn logout-btn">로그아웃</button>
+    </div>
+  </div>
+
   <div class="container">
     <h1>🎮 게임 할인 비교 사이트</h1>
     <p>Steam, Epic Games, DirectG의 게임 가격과 할인을 비교해보세요.</p>
 
     <div class="card">
       <h2>메뉴</h2>
-      <a class="btn" href="/signup">회원가입</a>
-      <a class="btn" href="/login">로그인</a>
       <a class="btn secondary" href="/games">게임 목록 보기</a>
       <a class="btn secondary" href="/platforms">플랫폼 목록 보기</a>
     </div>
   </div>
+
+  <script>
+    const guestMenu = document.getElementById("guestMenu");
+    const userMenu = document.getElementById("userMenu");
+    const welcomeText = document.getElementById("welcomeText");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    const savedUser = localStorage.getItem("loggedInUser");
+
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+      guestMenu.style.display = "none";
+      userMenu.style.display = "flex";
+      welcomeText.textContent = `${user.username}님`;
+    } else {
+      guestMenu.style.display = "flex";
+      userMenu.style.display = "none";
+    }
+
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("loggedInUser");
+      alert("로그아웃 되었습니다.");
+      window.location.href = "/";
+    });
+  </script>
 </body>
 </html>

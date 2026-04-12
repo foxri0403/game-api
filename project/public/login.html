@@ -27,8 +27,8 @@
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
 
       const response = await fetch("/api/login", {
         method: "POST",
@@ -41,7 +41,9 @@
       const data = await response.json();
 
       if (data.success) {
-        result.textContent = `${data.user.username}님 로그인 성공`;
+        localStorage.setItem("loggedInUser", JSON.stringify(data.user));
+        alert(`${data.user.username}님 로그인 성공`);
+        window.location.href = "/";
       } else {
         result.textContent = data.message || data.error;
       }

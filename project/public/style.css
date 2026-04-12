@@ -5,6 +5,44 @@ body {
   color: white;
 }
 
+.top-bar {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 20px 30px;
+  box-sizing: border-box;
+}
+
+#guestMenu,
+#userMenu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.top-btn {
+  display: inline-block;
+  padding: 10px 16px;
+  background: #2563eb;
+  color: white;
+  text-decoration: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.logout-btn {
+  background: #dc2626;
+}
+
+.welcome-text {
+  font-size: 15px;
+  font-weight: bold;
+  color: #f9fafb;
+}
+
 .container {
   max-width: 700px;
   margin: 60px auto;
