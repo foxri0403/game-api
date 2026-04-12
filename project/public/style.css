@@ -83,3 +83,34 @@ body {
   width: 100%;
   border-radius: 10px;
 }
+.search-btn {
+  padding: 10px 15px;
+  margin-left: 5px;
+  border-radius: 10px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+.game-card {
+  background: #1e293b;
+  padding: 15px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.game-card img {
+  width: 100%;
+  border-radius: 10px;
+}
+
+.price {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.discount {
+  color: red;
+  font-weight: bold;
+}
