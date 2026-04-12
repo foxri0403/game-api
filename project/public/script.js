@@ -1,4 +1,3 @@
-// 로그인 상태
 const guestMenu = document.getElementById("guestMenu");
 const userMenu = document.getElementById("userMenu");
 const username = document.getElementById("username");
@@ -20,10 +19,7 @@ if (logoutBtn) {
   });
 }
 
-// 🔥 검색 함수
 async function searchSteam() {
-  console.log("검색 실행됨");
-
   const input = document.getElementById("searchInput");
   const list = document.getElementById("gameList");
 
@@ -38,8 +34,6 @@ async function searchSteam() {
     const res = await fetch(`/api/steam/search?q=${encodeURIComponent(keyword)}`);
     const data = await res.json();
 
-    console.log("결과:", data);
-
     if (!data.success) {
       list.innerHTML = `<p>오류: ${data.message || data.error}</p>`;
       return;
@@ -47,20 +41,18 @@ async function searchSteam() {
 
     list.innerHTML = data.results.map(g => `
       <div class="game-card">
-        <img src="${g.image}">
+        <img src="${g.image}" alt="${g.name}">
         <h3>${g.name}</h3>
-        <p>₩${(g.price / 100).toLocaleString()}</p>
-        ${g.discount > 0 ? `<p>🔥 -${g.discount}%</p>` : ""}
+        <p class="price">₩${(g.price / 100).toLocaleString()}</p>
+        ${g.discount > 0 ? `<p class="discount">🔥 -${g.discount}%</p>` : ""}
       </div>
     `).join("");
-
   } catch (err) {
     console.error(err);
     list.innerHTML = `<p>요청 실패</p>`;
   }
 }
 
-// 버튼 연결
 window.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("searchBtn");
   if (btn) {

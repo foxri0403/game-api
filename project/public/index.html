@@ -1,69 +1,46 @@
-// 로그인 상태
-const guestMenu = document.getElementById("guestMenu");
-const userMenu = document.getElementById("userMenu");
-const username = document.getElementById("username");
-const logoutBtn = document.getElementById("logoutBtn");
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Sale</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="logo">🎮 GameSale</div>
 
-const savedUser = localStorage.getItem("loggedInUser");
+    <div>
+      <input id="searchInput" type="text" placeholder="게임 검색..." class="search">
+      <button id="searchBtn" class="search-btn">검색</button>
+    </div>
 
-if (savedUser) {
-  const user = JSON.parse(savedUser);
-  if (guestMenu) guestMenu.style.display = "none";
-  if (userMenu) userMenu.style.display = "flex";
-  if (username) username.textContent = user.username + "님";
-}
-
-if (logoutBtn) {
-  logoutBtn.addEventListener("click", () => {
-    localStorage.removeItem("loggedInUser");
-    location.reload();
-  });
-}
-
-// 🔥 검색 함수
-async function searchSteam() {
-  console.log("검색 실행됨");
-
-  const input = document.getElementById("searchInput");
-  const list = document.getElementById("gameList");
-
-  const keyword = input.value.trim();
-
-  if (!keyword) {
-    alert("검색어 입력해");
-    return;
-  }
-
-  try {
-    const res = await fetch(`/api/steam/search?q=${encodeURIComponent(keyword)}`);
-    const data = await res.json();
-
-    console.log("결과:", data);
-
-    if (!data.success) {
-      list.innerHTML = `<p>오류: ${data.message || data.error}</p>`;
-      return;
-    }
-
-    list.innerHTML = data.results.map(g => `
-      <div class="game-card">
-        <img src="${g.image}">
-        <h3>${g.name}</h3>
-        <p>₩${(g.price / 100).toLocaleString()}</p>
-        ${g.discount > 0 ? `<p>🔥 -${g.discount}%</p>` : ""}
+    <div class="nav-right">
+      <div id="guestMenu">
+        <a href="/login">로그인</a>
+        <a href="/signup">회원가입</a>
       </div>
-    `).join("");
 
-  } catch (err) {
-    console.error(err);
-    list.innerHTML = `<p>요청 실패</p>`;
-  }
-}
+      <div id="userMenu" style="display:none;">
+        <span id="username"></span>
+        <button id="logoutBtn">로그아웃</button>
+      </div>
+    </div>
+  </header>
 
-// 버튼 연결
-window.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("searchBtn");
-  if (btn) {
-    btn.addEventListener("click", searchSteam);
-  }
-});
+  <section class="banner">
+    <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e" alt="banner">
+    <div class="banner-text">
+      <h1>🔥 지금 할인 중!</h1>
+      <p>최대 80% 할인 게임 확인</p>
+    </div>
+  </section>
+
+  <section class="game-section">
+    <h2>검색 결과</h2>
+    <div id="gameList" class="game-grid"></div>
+  </section>
+
+  <script src="/script.js"></script>
+</body>
+</html>
