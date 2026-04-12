@@ -1,21 +1,53 @@
-const steamRoutes = require("./routes/steam");
+// 🔥 서버 죽는 원인 추적용 (필수)
+process.on("uncaughtException", (err) => {
+  console.error("🔥 치명적 에러:", err);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("🔥 Promise 에러:", err);
+});
+
 const express = require("express");
-const axios = require("axios");
 const cors = require("cors");
 const path = require("path");
-const key = process.env.STEAM_API_KEY;
-const authRoutes = require("./routes/auth");
-const gameRoutes = require("./routes/game");
-const app = express();
-const router = express.Router();
 
+const app = express();
+
+// 🔧 기본 미들웨어
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "public")));
-app.use("/api", steamRoutes);
 
-// 페이지 라우트
+// 🔧 정적 파일 (HTML/CSS)
+app.use(express.static(path.join(__dirname, "public")));
+
+// 🔥 라우트 안전하게 로드 (하나라도 터지면 로그 출력)
+let steamRoutes;
+let authRoutes;
+let gameRoutes;
+
+try {
+  steamRoutes = require("./routes/steam");
+  console.log("✅ steamRoutes 로드 성공");
+} catch (err) {
+  console.error("❌ steamRoutes 로드 실패:", err);
+}
+
+try {
+  authRoutes = require("./routes/auth");
+  console.log("✅ authRoutes 로드 성공");
+} catch (err) {
+  console.error("❌ authRoutes 로드 실패:", err);
+}
+
+try {
+  gameRoutes = require("./routes/game");
+  console.log("✅ gameRoutes 로드 성공");
+} catch (err) {
+  console.error("❌ gameRoutes 로드 실패:", err);
+}
+
+// 🔧 페이지 라우트
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
@@ -28,35 +60,22 @@ app.get("/login", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
-// API / 기능 라우트 연결
-app.use("/api", authRoutes);
-app.use("/", gameRoutes);
+// 🔧 API 라우트 연결 (로드된 것만 연결)
+if (steamRoutes) {
+  app.use("/api", steamRoutes);
+}
 
-router.get("/steam/apps", async (req, res) => {
-  try {
-    const key = process.env.STEAM_API_KEY;
+if (authRoutes) {
+  app.use("/api", authRoutes);
+}
 
-    const response = await axios.get(
-      "https://partner.steam-api.com/IStoreService/GetAppList/v1/",
-      {
-        params: {
-          key
-        }
-      }
-    );
+if (gameRoutes) {
+  app.use("/", gameRoutes);
+}
 
-    res.json({
-      success: true,
-      data: response.data
-    });
+// 🔥 서버 실행 (Render 필수)
+const PORT = process.env.PORT || 3000;
 
-  } catch (err) {
-    console.error("Steam 오류:", err.message);
-    res.status(500).json({
-      success: false,
-      error: err.message
-    });
-  }
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 서버 실행 중: ${PORT}`);
 });
-
-module.exports = router;
