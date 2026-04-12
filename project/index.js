@@ -1,16 +1,19 @@
+const steamRoutes = require("./routes/steam");
 const express = require("express");
+const axios = require("axios");
 const cors = require("cors");
 const path = require("path");
-
+const key = process.env.STEAM_API_KEY;
 const authRoutes = require("./routes/auth");
 const gameRoutes = require("./routes/game");
-
 const app = express();
+const router = express.Router();
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/api", steamRoutes);
 
 // 페이지 라우트
 app.get("/", (req, res) => {
@@ -29,7 +32,31 @@ app.get("/login", (req, res) => {
 app.use("/api", authRoutes);
 app.use("/", gameRoutes);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`서버 실행 중: ${PORT}`);
+router.get("/steam/apps", async (req, res) => {
+  try {
+    const key = process.env.STEAM_API_KEY;
+
+    const response = await axios.get(
+      "https://partner.steam-api.com/IStoreService/GetAppList/v1/",
+      {
+        params: {
+          key
+        }
+      }
+    );
+
+    res.json({
+      success: true,
+      data: response.data
+    });
+
+  } catch (err) {
+    console.error("Steam 오류:", err.message);
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
 });
+
+module.exports = router;
