@@ -3,34 +3,15 @@ const axios = require("axios");
 
 const router = express.Router();
 
-// Steam 라우트 연결 테스트
+// 테스트
 router.get("/steam/test", (req, res) => {
-  res.json({
-    success: true,
-    message: "Steam route OK"
-  });
+  res.json({ success: true });
 });
 
-// Steam API 키 확인
-router.get("/steam/key-check", (req, res) => {
-  res.json({
-    success: true,
-    hasSteamKey: !!process.env.STEAM_API_KEY
-  });
-});
-
-// Steam 게임 검색
+// 검색 (수정된 부분)
 router.get("/steam/search", async (req, res) => {
   try {
-    const keyword = (req.query.q || "").trim().toLowerCase();
-    const key = process.env.STEAM_API_KEY;
-
-    if (!key) {
-      return res.status(500).json({
-        success: false,
-        message: "STEAM_API_KEY 환경변수가 없습니다."
-      });
-    }
+    const keyword = (req.query.q || "").trim();
 
     if (!keyword) {
       return res.status(400).json({
@@ -40,35 +21,39 @@ router.get("/steam/search", async (req, res) => {
     }
 
     const response = await axios.get(
-      "https://partner.steam-api.com/IStoreService/GetAppList/v1/",
+      "https://store.steampowered.com/api/storesearch",
       {
-        params: { key },
+        params: {
+          term: keyword,
+          cc: "kr",
+          l: "koreana"
+        },
         timeout: 10000
       }
     );
 
-    const apps = response.data?.response?.apps || [];
+    const items = response.data.items || [];
 
-    const filtered = apps
-      .filter(app => app.name && app.name.toLowerCase().includes(keyword))
-      .slice(0, 30)
-      .map(app => ({
-        appid: app.appid,
-        name: app.name
-      }));
+    const results = items.map(game => ({
+      appid: game.id,
+      name: game.name,
+      price: game.price?.final || 0,
+      discount: game.price?.discount_percent || 0,
+      image: game.tiny_image
+    }));
 
     res.json({
       success: true,
-      keyword,
-      count: filtered.length,
-      results: filtered
+      count: results.length,
+      results
     });
+
   } catch (err) {
-    console.error("Steam 검색 오류:", err.response?.data || err.message);
+    console.error("Steam 검색 오류:", err.message);
 
     res.status(500).json({
       success: false,
-      error: err.response?.data || err.message
+      error: err.message
     });
   }
 });
