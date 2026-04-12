@@ -1,4 +1,4 @@
-//const steamRoutes = require("./routes/steam");
+const steamRoutes = require("./routes/steam");
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
@@ -13,7 +13,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
-//app.use("/api", steamRoutes);
+app.use("/api", steamRoutes);
 
 // 페이지 라우트
 app.get("/", (req, res) => {
