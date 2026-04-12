@@ -1,6 +1,5 @@
 const express = require("express");
 const axios = require("axios");
-
 const router = express.Router();
 
 // 앱 목록 가져오기
