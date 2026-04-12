@@ -1,7 +1,12 @@
+console.log("script.js 로드됨");
+
 const guestMenu = document.getElementById("guestMenu");
 const userMenu = document.getElementById("userMenu");
 const username = document.getElementById("username");
 const logoutBtn = document.getElementById("logoutBtn");
+const searchInput = document.getElementById("searchInput");
+const searchBtn = document.getElementById("searchBtn");
+const gameList = document.getElementById("gameList");
 
 const savedUser = localStorage.getItem("loggedInUser");
 
@@ -9,7 +14,7 @@ if (savedUser) {
   const user = JSON.parse(savedUser);
   if (guestMenu) guestMenu.style.display = "none";
   if (userMenu) userMenu.style.display = "flex";
-  if (username) username.textContent = user.username + "님";
+  if (username) username.textContent = `${user.username}님`;
 }
 
 if (logoutBtn) {
@@ -20,42 +25,56 @@ if (logoutBtn) {
 }
 
 async function searchSteam() {
-  const input = document.getElementById("searchInput");
-  const list = document.getElementById("gameList");
+  console.log("검색 버튼 눌림");
 
-  const keyword = input.value.trim();
+  const keyword = searchInput ? searchInput.value.trim() : "";
+  console.log("검색어:", keyword);
 
   if (!keyword) {
     alert("검색어 입력해");
     return;
   }
 
+  gameList.innerHTML = "<p>검색 중...</p>";
+
   try {
     const res = await fetch(`/api/steam/search?q=${encodeURIComponent(keyword)}`);
     const data = await res.json();
 
+    console.log("검색 결과:", data);
+
     if (!data.success) {
-      list.innerHTML = `<p>오류: ${data.message || data.error}</p>`;
+      gameList.innerHTML = `<p>오류: ${data.message || data.error}</p>`;
       return;
     }
 
-    list.innerHTML = data.results.map(g => `
+    if (!data.results || data.results.length === 0) {
+      gameList.innerHTML = "<p>검색 결과 없음</p>";
+      return;
+    }
+
+    gameList.innerHTML = data.results.map(g => `
       <div class="game-card">
         <img src="${g.image}" alt="${g.name}">
         <h3>${g.name}</h3>
-        <p class="price">₩${(g.price / 100).toLocaleString()}</p>
+        <p class="price">₩${((g.price || 0) / 100).toLocaleString()}</p>
         ${g.discount > 0 ? `<p class="discount">🔥 -${g.discount}%</p>` : ""}
       </div>
     `).join("");
   } catch (err) {
-    console.error(err);
-    list.innerHTML = `<p>요청 실패</p>`;
+    console.error("검색 실패:", err);
+    gameList.innerHTML = "<p>요청 실패</p>";
   }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("searchBtn");
-  if (btn) {
-    btn.addEventListener("click", searchSteam);
-  }
-});
+if (searchBtn) {
+  searchBtn.addEventListener("click", searchSteam);
+}
+
+if (searchInput) {
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      searchSteam();
+    }
+  });
+}
