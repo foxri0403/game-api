@@ -4,8 +4,10 @@ const { Pool } = require("pg");
 const router = express.Router();
 
 const pool = new Pool({
-  connectionString: process.env.postgresql://game_db_3puq_user:xjrZoXjKNUGJsL8fzHvRYLvknYDRKi3p@dpg-d6vdi36a2pns73ah8ao0-a/game_db_3puq,
-  ssl: { rejectUnauthorized: false }
+  connectionString: "postgresql://game_db_3puq_user:xjrZoXjKNUGJsL8fzHvRYLvknYDRKi3p@dpg-d6vdi36a2pns73ah8ao0-a/game_db_3puq",
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 // 찜 추가
@@ -94,6 +96,13 @@ router.get("/wishlist/:user_id", async (req, res) => {
 // 찜 삭제
 router.delete("/wishlist", async (req, res) => {
   const { user_id, appid } = req.body;
+
+  if (!user_id || !appid) {
+    return res.status(400).json({
+      success: false,
+      message: "user_id, appid가 필요합니다."
+    });
+  }
 
   try {
     await pool.query(
