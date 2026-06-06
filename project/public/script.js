@@ -32,23 +32,8 @@ function formatPrice(price) {
   return `₩${(price / 100).toLocaleString()}`;
 }
 
-function getOriginalPrice(salePrice, discount) {
-  if (!salePrice || salePrice <= 0) {
-    return 0;
-  }
-
-  if (!discount || discount <= 0) {
-    return salePrice;
-  }
-
-  return Math.round(salePrice / (1 - discount / 100));
-}
-
 async function searchSteam() {
-  console.log("검색 버튼 눌림");
-
   const keyword = searchInput ? searchInput.value.trim() : "";
-  console.log("검색어:", keyword);
 
   if (!keyword) {
     alert("검색어 입력해");
@@ -60,8 +45,6 @@ async function searchSteam() {
   try {
     const res = await fetch(`/api/steam/search?q=${encodeURIComponent(keyword)}`);
     const data = await res.json();
-
-    console.log("검색 결과:", data);
 
     if (!data.success) {
       gameList.innerHTML = `<p>오류: ${data.message || data.error}</p>`;
@@ -76,29 +59,36 @@ async function searchSteam() {
     gameList.innerHTML = data.results.map(g => {
       const salePrice = g.salePrice || g.price || 0;
       const discount = g.discount || 0;
-      const originalPrice = g.originalPrice || getOriginalPrice(salePrice, discount);
+      const originalPrice = g.originalPrice || salePrice;
+
+      if (discount > 0) {
+        return `
+          <div class="game-card">
+            <img src="${g.image}" alt="${g.name}">
+            <h3>${g.name}</h3>
+
+            <p class="discount">🔥 ${discount}% 할인</p>
+
+            <p class="original-price">
+              원가: <del>${formatPrice(originalPrice)}</del>
+            </p>
+
+            <p class="sale-price">
+              할인가: ${formatPrice(salePrice)}
+            </p>
+          </div>
+        `;
+      }
 
       return `
         <div class="game-card">
           <img src="${g.image}" alt="${g.name}">
           <h3>${g.name}</h3>
 
-          ${
-            discount > 0
-              ? `<p class="discount">🔥 ${discount}% 할인</p>`
-              : `<p class="discount no-sale">할인 없음</p>`
-          }
+          <p class="discount no-sale">할인 없음</p>
 
           <p class="original-price">
-            원가: ${
-              discount > 0
-                ? `<del>${formatPrice(originalPrice)}</del>`
-                : formatPrice(originalPrice)
-            }
-          </p>
-
-          <p class="sale-price">
-            할인가: ${formatPrice(salePrice)}
+            가격: ${formatPrice(originalPrice)}
           </p>
         </div>
       `;

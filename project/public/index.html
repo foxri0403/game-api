@@ -42,24 +42,6 @@
   </section>
 
   <script src="/script.js"></script>
-resultDiv.innerHTML += `
-<div class="game-card">
-    <img src="${game.image}" width="200">
-
-    <h3>${game.name}</h3>
-
-    <p style="color:red;font-weight:bold;">
-        ${game.discount}% 할인
-    </p>
-
-    <p style="text-decoration:line-through;color:gray;">
-        원가: ₩${game.originalPrice.toLocaleString()}
-    </p>
-
-    <p style="font-size:20px;font-weight:bold;">
-        할인 가격: ₩${game.salePrice.toLocaleString()}
-    </p>
-</div>
-`;
+  
 </body>
 </html>
