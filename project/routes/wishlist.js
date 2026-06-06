@@ -1,5 +1,6 @@
 const express = require("express");
 const { Pool } = require("pg");
+const axios = require("axios");
 
 const router = express.Router();
 
@@ -45,7 +46,7 @@ router.post("/wishlist", async (req, res) => {
       (user_id, appid, game_name, image, current_price)
       VALUES ($1, $2, $3, $4, $5)
       `,
-      [user_id, appid, game_name, image || "", current_price || 0]
+      [user_id, appid, game_name, image || "", current_price ?? null]
     );
 
     res.json({
@@ -63,7 +64,7 @@ router.post("/wishlist", async (req, res) => {
   }
 });
 
-// 내 찜 목록 조회
+// 내 찜 목록 조회 + Steam 최신 가격 조회
 router.get("/wishlist/:user_id", async (req, res) => {
   const { user_id } = req.params;
 
@@ -78,9 +79,64 @@ router.get("/wishlist/:user_id", async (req, res) => {
       [user_id]
     );
 
+    const games = await Promise.all(
+      result.rows.map(async (game) => {
+        const savedPrice = game.current_price;
+
+        try {
+          const steamRes = await axios.get(
+            "https://store.steampowered.com/api/appdetails",
+            {
+              params: {
+                appids: game.appid,
+                cc: "kr",
+                l: "koreana",
+                filters: "basic,price_overview"
+              },
+              timeout: 10000
+            }
+          );
+
+          const appData = steamRes.data[String(game.appid)];
+
+          if (appData && appData.success && appData.data) {
+            const detail = appData.data;
+
+            game.image = game.image || detail.header_image || "";
+
+            if (detail.price_overview) {
+              game.current_price = detail.price_overview.final;
+              game.original_price = detail.price_overview.initial;
+              game.discount = detail.price_overview.discount_percent;
+            } else if (detail.is_free) {
+              game.current_price = 0;
+              game.original_price = 0;
+              game.discount = 0;
+            } else {
+              game.current_price = savedPrice;
+              game.original_price = savedPrice;
+              game.discount = 0;
+            }
+          } else {
+            game.current_price = savedPrice;
+            game.original_price = savedPrice;
+            game.discount = 0;
+          }
+
+        } catch (e) {
+          console.log(`Steam 가격 조회 실패: ${game.game_name}`);
+          game.current_price = savedPrice;
+          game.original_price = savedPrice;
+          game.discount = 0;
+        }
+
+        return game;
+      })
+    );
+
     res.json({
       success: true,
-      results: result.rows
+      results: games
     });
 
   } catch (err) {
