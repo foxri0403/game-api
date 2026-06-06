@@ -76,6 +76,7 @@ app.get("/signup", (req, res) => {
 app.get("/login", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
+
 app.get("/mypage", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "mypage.html"));
 });
@@ -95,6 +96,11 @@ app.get("/init-wishlist", async (req, res) => {
     `);
 
     await pool.query(`
+      ALTER TABLE WISHLIST
+      ADD COLUMN IF NOT EXISTS image TEXT;
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS ALERTS (
         alert_id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
@@ -106,7 +112,7 @@ app.get("/init-wishlist", async (req, res) => {
       );
     `);
 
-    res.send("WISHLIST, ALERTS 테이블 생성 완료");
+    res.send("WISHLIST, ALERTS 테이블 생성 및 image 컬럼 추가 완료");
   } catch (err) {
     console.error("❌ 테이블 생성 실패:", err);
     res.status(500).send(err.message);
