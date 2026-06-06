@@ -14,7 +14,6 @@ const { Pool } = require("pg");
 
 const app = express();
 
-// 🔧 PostgreSQL 연결
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -22,15 +21,12 @@ const pool = new Pool({
   }
 });
 
-// 🔧 기본 미들웨어
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 🔧 정적 파일
 app.use(express.static(path.join(__dirname, "public")));
 
-// 🔥 라우트 안전하게 로드
 let steamRoutes;
 let authRoutes;
 let gameRoutes;
@@ -64,7 +60,6 @@ try {
   console.error("❌ wishlistRoutes 로드 실패:", err);
 }
 
-// 🔧 페이지 라우트
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
@@ -81,7 +76,6 @@ app.get("/mypage", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "mypage.html"));
 });
 
-// 🔥 WISHLIST + ALERTS 테이블 생성용 임시 라우트
 app.get("/init-wishlist", async (req, res) => {
   try {
     await pool.query(`
@@ -101,6 +95,11 @@ app.get("/init-wishlist", async (req, res) => {
     `);
 
     await pool.query(`
+      ALTER TABLE WISHLIST
+      ADD COLUMN IF NOT EXISTS current_price INTEGER DEFAULT 0;
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS ALERTS (
         alert_id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
@@ -112,14 +111,13 @@ app.get("/init-wishlist", async (req, res) => {
       );
     `);
 
-    res.send("WISHLIST, ALERTS 테이블 생성 및 image 컬럼 추가 완료");
+    res.send("WISHLIST, ALERTS 테이블 생성 및 컬럼 추가 완료");
   } catch (err) {
     console.error("❌ 테이블 생성 실패:", err);
     res.status(500).send(err.message);
   }
 });
 
-// 🔧 API 라우트 연결
 if (steamRoutes) {
   app.use("/api", steamRoutes);
 }
@@ -136,7 +134,6 @@ if (gameRoutes) {
   app.use("/", gameRoutes);
 }
 
-// 🔥 서버 실행
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {

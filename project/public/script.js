@@ -26,14 +26,8 @@ if (logoutBtn) {
 }
 
 function formatPrice(price) {
-  if (price === 0) {
-    return "무료";
-  }
-
-  if (!price || price < 0) {
-    return "가격 정보 없음";
-  }
-
+  if (price === 0) return "무료";
+  if (!price || price < 0) return "가격 정보 없음";
   return `₩${(price / 100).toLocaleString()}`;
 }
 
@@ -79,32 +73,6 @@ async function searchSteam() {
       const safeName = escapeText(g.name);
       const safeImage = escapeText(g.image || "");
 
-      if (discount > 0) {
-        return `
-          <div class="game-card">
-            <img src="${g.image}" alt="${g.name}">
-            <h3>${g.name}</h3>
-
-            <button
-              class="wishlist-btn"
-              type="button"
-              onclick="addWishlist(${g.appid}, '${safeName}', '${safeImage}')">
-              ❤️ 찜하기
-            </button>
-
-            <p class="discount">🔥 ${discount}% 할인</p>
-
-            <p class="original-price">
-              원가: <del>${formatPrice(originalPrice)}</del>
-            </p>
-
-            <p class="sale-price">
-              할인가: ${formatPrice(salePrice)}
-            </p>
-          </div>
-        `;
-      }
-
       return `
         <div class="game-card">
           <img src="${g.image}" alt="${g.name}">
@@ -113,15 +81,28 @@ async function searchSteam() {
           <button
             class="wishlist-btn"
             type="button"
-            onclick="addWishlist(${g.appid}, '${safeName}', '${safeImage}')">
+            onclick="addWishlist(${g.appid}, '${safeName}', '${safeImage}', ${salePrice})">
             ❤️ 찜하기
           </button>
 
-          <p class="discount no-sale">할인 없음</p>
-
-          <p class="original-price">
-            가격: ${formatPrice(originalPrice)}
-          </p>
+          ${
+            discount > 0
+              ? `
+                <p class="discount">🔥 ${discount}% 할인</p>
+                <p class="original-price">
+                  원가: <del>${formatPrice(originalPrice)}</del>
+                </p>
+                <p class="sale-price">
+                  할인가: ${formatPrice(salePrice)}
+                </p>
+              `
+              : `
+                <p class="discount no-sale">할인 없음</p>
+                <p class="original-price">
+                  가격: ${formatPrice(originalPrice)}
+                </p>
+              `
+          }
         </div>
       `;
     }).join("");
@@ -132,7 +113,7 @@ async function searchSteam() {
   }
 }
 
-async function addWishlist(appid, gameName, gameImage) {
+async function addWishlist(appid, gameName, gameImage, currentPrice) {
   const user = JSON.parse(localStorage.getItem("loggedInUser"));
 
   if (!user) {
@@ -143,8 +124,7 @@ async function addWishlist(appid, gameName, gameImage) {
   const userId = user.user_id || user.id;
 
   if (!userId) {
-    alert("로그인 정보에 user_id가 없어. 로그인 코드를 확인해야 해.");
-    console.log("현재 로그인 정보:", user);
+    alert("로그인 정보에 user_id가 없어.");
     return;
   }
 
@@ -158,7 +138,8 @@ async function addWishlist(appid, gameName, gameImage) {
         user_id: userId,
         appid,
         game_name: gameName,
-        image: gameImage
+        image: gameImage,
+        current_price: currentPrice
       })
     });
 
@@ -182,8 +163,6 @@ if (searchBtn) {
 
 if (searchInput) {
   searchInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      searchSteam();
-    }
+    if (e.key === "Enter") searchSteam();
   });
 }
