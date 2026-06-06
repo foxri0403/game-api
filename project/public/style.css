@@ -114,3 +114,12 @@ body {
   color: red;
   font-weight: bold;
 }
+
+.mypage-btn {
+  color: white;
+  text-decoration: none;
+  background: #2563eb;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 0 8px;
+}

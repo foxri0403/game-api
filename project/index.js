@@ -76,6 +76,9 @@ app.get("/signup", (req, res) => {
 app.get("/login", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
+app.get("/mypage", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "mypage.html"));
+});
 
 // 🔥 WISHLIST + ALERTS 테이블 생성용 임시 라우트
 app.get("/init-wishlist", async (req, res) => {
