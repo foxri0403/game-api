@@ -4,7 +4,7 @@ const { Pool } = require("pg");
 const router = express.Router();
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.postgresql://game_db_3puq_user:xjrZoXjKNUGJsL8fzHvRYLvknYDRKi3p@dpg-d6vdi36a2pns73ah8ao0-a/game_db_3puq,
   ssl: { rejectUnauthorized: false }
 });
 
