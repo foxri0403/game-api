@@ -33,8 +33,14 @@ async function loadWishlist() {
 
     wishlist.innerHTML = data.results.map(game => `
       <div class="game-card">
+        ${
+          game.image
+            ? `<img src="${game.image}" alt="${game.game_name}">`
+            : `<div class="no-image">이미지 없음</div>`
+        }
+
         <h3>${game.game_name}</h3>
-        <p>Steam App ID: ${game.appid}</p>
+
         <button onclick="deleteWishlist(${game.appid})">
           삭제
         </button>

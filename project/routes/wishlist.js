@@ -9,9 +9,10 @@ const pool = new Pool({
     rejectUnauthorized: false
   }
 });
+
 // 찜 추가
 router.post("/wishlist", async (req, res) => {
-  const { user_id, appid, game_name } = req.body;
+  const { user_id, appid, game_name, image } = req.body;
 
   if (!user_id || !appid || !game_name) {
     return res.status(400).json({
@@ -41,10 +42,10 @@ router.post("/wishlist", async (req, res) => {
     await pool.query(
       `
       INSERT INTO wishlist
-      (user_id, appid, game_name)
-      VALUES ($1, $2, $3)
+      (user_id, appid, game_name, image)
+      VALUES ($1, $2, $3, $4)
       `,
-      [user_id, appid, game_name]
+      [user_id, appid, game_name, image || ""]
     );
 
     res.json({

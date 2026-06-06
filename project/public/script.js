@@ -77,6 +77,7 @@ async function searchSteam() {
       const discount = g.discount || 0;
       const originalPrice = g.originalPrice || salePrice;
       const safeName = escapeText(g.name);
+      const safeImage = escapeText(g.image || "");
 
       if (discount > 0) {
         return `
@@ -87,7 +88,7 @@ async function searchSteam() {
             <button
               class="wishlist-btn"
               type="button"
-              onclick="addWishlist(${g.appid}, '${safeName}')">
+              onclick="addWishlist(${g.appid}, '${safeName}', '${safeImage}')">
               ❤️ 찜하기
             </button>
 
@@ -112,7 +113,7 @@ async function searchSteam() {
           <button
             class="wishlist-btn"
             type="button"
-            onclick="addWishlist(${g.appid}, '${safeName}')">
+            onclick="addWishlist(${g.appid}, '${safeName}', '${safeImage}')">
             ❤️ 찜하기
           </button>
 
@@ -131,7 +132,7 @@ async function searchSteam() {
   }
 }
 
-async function addWishlist(appid, gameName) {
+async function addWishlist(appid, gameName, gameImage) {
   const user = JSON.parse(localStorage.getItem("loggedInUser"));
 
   if (!user) {
@@ -156,7 +157,8 @@ async function addWishlist(appid, gameName) {
       body: JSON.stringify({
         user_id: userId,
         appid,
-        game_name: gameName
+        game_name: gameName,
+        image: gameImage
       })
     });
 
