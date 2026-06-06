@@ -24,6 +24,26 @@ if (logoutBtn) {
   });
 }
 
+function formatPrice(price) {
+  if (!price || price <= 0) {
+    return "가격 정보 없음";
+  }
+
+  return `₩${(price / 100).toLocaleString()}`;
+}
+
+function getOriginalPrice(salePrice, discount) {
+  if (!salePrice || salePrice <= 0) {
+    return 0;
+  }
+
+  if (!discount || discount <= 0) {
+    return salePrice;
+  }
+
+  return Math.round(salePrice / (1 - discount / 100));
+}
+
 async function searchSteam() {
   console.log("검색 버튼 눌림");
 
@@ -53,14 +73,37 @@ async function searchSteam() {
       return;
     }
 
-    gameList.innerHTML = data.results.map(g => `
-      <div class="game-card">
-        <img src="${g.image}" alt="${g.name}">
-        <h3>${g.name}</h3>
-        <p class="price">₩${((g.price || 0) / 100).toLocaleString()}</p>
-        ${g.discount > 0 ? `<p class="discount">🔥 -${g.discount}%</p>` : ""}
-      </div>
-    `).join("");
+    gameList.innerHTML = data.results.map(g => {
+      const salePrice = g.salePrice || g.price || 0;
+      const discount = g.discount || 0;
+      const originalPrice = g.originalPrice || getOriginalPrice(salePrice, discount);
+
+      return `
+        <div class="game-card">
+          <img src="${g.image}" alt="${g.name}">
+          <h3>${g.name}</h3>
+
+          ${
+            discount > 0
+              ? `<p class="discount">🔥 ${discount}% 할인</p>`
+              : `<p class="discount no-sale">할인 없음</p>`
+          }
+
+          <p class="original-price">
+            원가: ${
+              discount > 0
+                ? `<del>${formatPrice(originalPrice)}</del>`
+                : formatPrice(originalPrice)
+            }
+          </p>
+
+          <p class="sale-price">
+            할인가: ${formatPrice(salePrice)}
+          </p>
+        </div>
+      `;
+    }).join("");
+
   } catch (err) {
     console.error("검색 실패:", err);
     gameList.innerHTML = "<p>요청 실패</p>";

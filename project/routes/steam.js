@@ -34,13 +34,28 @@ router.get("/steam/search", async (req, res) => {
 
     const items = response.data.items || [];
 
-    const results = items.map(game => ({
-      appid: game.id,
-      name: game.name,
-      price: game.price?.final || 0,
-      discount: game.price?.discount_percent || 0,
-      image: game.tiny_image
-    }));
+    const results = data.items.map(game => {
+
+    const salePrice = game.price;      // 현재 할인된 가격
+    const discount = game.discount;    // 할인율
+
+    let originalPrice = salePrice;
+
+    if (discount > 0) {
+        originalPrice = Math.round(
+            salePrice / (1 - discount / 100)
+        );
+    }
+
+    return {
+        appid: game.id,
+        name: game.name,
+        originalPrice,
+        salePrice,
+        discount,
+        image: game.tiny_image
+    };
+});
 
     res.json({
       success: true,
