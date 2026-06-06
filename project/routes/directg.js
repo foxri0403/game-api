@@ -6,17 +6,13 @@ const router = express.Router();
 
 function parsePrice(text) {
   if (!text) return null;
-
-  const onlyNumber = text.replace(/[^0-9]/g, "");
-
-  if (!onlyNumber) return null;
-
-  return Number(onlyNumber);
+  const num = String(text).replace(/[^0-9]/g, "");
+  return num ? Number(num) : null;
 }
 
 router.get("/directg/search", async (req, res) => {
   try {
-    const keyword = (req.query.q || "").trim();
+    const keyword = (req.query.q || "").trim().toLowerCase();
 
     if (!keyword) {
       return res.status(400).json({
@@ -25,7 +21,7 @@ router.get("/directg/search", async (req, res) => {
       });
     }
 
-    const response = await axios.get("https://directg.net/index.php", {
+    const response = await axios.get("https://directg.net/", {
       headers: {
         "User-Agent": "Mozilla/5.0"
       },
@@ -35,35 +31,39 @@ router.get("/directg/search", async (req, res) => {
     const $ = cheerio.load(response.data);
     const results = [];
 
-    $("a").each((i, el) => {
-      const cardText = $(el).parent().text().replace(/\s+/g, " ").trim();
-      const name = $(el).find("img").attr("alt") || $(el).text().trim();
-      const image = $(el).find("img").attr("src") || "";
-      const href = $(el).attr("href") || "";
+    $("img").each((i, img) => {
+      const image = $(img).attr("src") || "";
+      const name = ($(img).attr("alt") || "").trim();
 
-      if (!name || !name.includes(keyword)) return;
+      if (!name) return;
+      if (!name.toLowerCase().includes(keyword)) return;
 
-      const discountMatch = cardText.match(/(\d+)%/);
+      const card = $(img).closest("a, li, div");
+      const text = card.text().replace(/\s+/g, " ").trim();
+
+      const discountMatch = text.match(/(\d+)\s*%/);
       const discount = discountMatch ? Number(discountMatch[1]) : 0;
 
-      const priceMatches = cardText.match(/[0-9,]+/g) || [];
+      const prices = text.match(/[0-9,]+/g) || [];
 
-      let originalPrice = null;
       let salePrice = null;
+      let originalPrice = null;
 
-      if (priceMatches.length >= 2 && discount > 0) {
-        originalPrice = parsePrice(priceMatches[priceMatches.length - 2]);
-        salePrice = parsePrice(priceMatches[priceMatches.length - 1]);
-      } else if (priceMatches.length >= 1) {
-        salePrice = parsePrice(priceMatches[priceMatches.length - 1]);
+      if (prices.length >= 2 && discount > 0) {
+        salePrice = parsePrice(prices[prices.length - 2]);
+        originalPrice = parsePrice(prices[prices.length - 1]);
+      } else if (prices.length >= 1) {
+        salePrice = parsePrice(prices[prices.length - 1]);
         originalPrice = salePrice;
       }
+
+      const link = card.attr("href") || $(img).closest("a").attr("href") || "";
 
       results.push({
         store: "DirectG",
         name,
-        image: image.startsWith("http") ? image : `https://directg.net/${image}`,
-        url: href.startsWith("http") ? href : `https://directg.net/${href}`,
+        image: image.startsWith("http") ? image : `https://directg.net${image.startsWith("/") ? image : "/" + image}`,
+        url: link.startsWith("http") ? link : `https://directg.net${link.startsWith("/") ? link : "/" + link}`,
         originalPrice,
         salePrice,
         discount
