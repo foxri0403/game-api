@@ -123,3 +123,12 @@ body {
   border-radius: 6px;
   margin: 0 8px;
 }
+
+.game-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.game-link:hover h3 {
+  text-decoration: underline;
+}

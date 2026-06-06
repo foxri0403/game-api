@@ -26,9 +26,10 @@ if (logoutBtn) {
 }
 
 function formatPrice(price) {
-  if (price === 0) return "무료";
-  if (!price || price < 0) return "가격 정보 없음";
-  return `₩${(price / 100).toLocaleString()}`;
+  if (price === null || price === undefined) return "가격 정보 없음";
+  if (Number(price) === 0) return "무료";
+  if (Number(price) < 0) return "가격 정보 없음";
+  return `₩${(Number(price) / 100).toLocaleString()}`;
 }
 
 function escapeText(text) {
@@ -67,16 +68,22 @@ async function searchSteam() {
     }
 
     gameList.innerHTML = data.results.map(g => {
-      const salePrice = g.salePrice || g.price || 0;
+      const salePrice = g.salePrice ?? g.price ?? null;
       const discount = g.discount || 0;
-      const originalPrice = g.originalPrice || salePrice;
+      const originalPrice = g.originalPrice ?? salePrice;
       const safeName = escapeText(g.name);
       const safeImage = escapeText(g.image || "");
 
       return `
         <div class="game-card">
-          <img src="${g.image}" alt="${g.name}">
-          <h3>${g.name}</h3>
+          <a
+            href="https://store.steampowered.com/app/${g.appid}"
+            target="_blank"
+            class="game-link"
+          >
+            <img src="${g.image}" alt="${g.name}">
+            <h3>${g.name}</h3>
+          </a>
 
           <button
             class="wishlist-btn"
