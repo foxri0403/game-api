@@ -4,12 +4,11 @@ const { Pool } = require("pg");
 const router = express.Router();
 
 const pool = new Pool({
-  connectionString: "postgresql://game_db_3puq_user:xjrZoXjKNUGJsL8fzHvRYLvknYDRKi3p@dpg-d6vdi36a2pns73ah8ao0-a/game_db_3puq",
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }
 });
-
 // 찜 추가
 router.post("/wishlist", async (req, res) => {
   const { user_id, appid, game_name } = req.body;
