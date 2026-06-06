@@ -1,5 +1,6 @@
 const express = require("express");
 const axios = require("axios");
+const cheerio = require("cheerio");
 
 const router = express.Router();
 
@@ -19,20 +20,15 @@ router.get("/steam/search", async (req, res) => {
       });
     }
 
-    const params = {
-      term: keyword,
-      cc: "kr",
-      l: "koreana"
-    };
-
-    if (genre) {
-      params.tags = genre;
-    }
-
     const response = await axios.get(
       "https://store.steampowered.com/api/storesearch",
       {
-        params,
+        params: {
+          term: keyword,
+          tags: genre || undefined,
+          cc: "kr",
+          l: "koreana"
+        },
         timeout: 10000
       }
     );
@@ -75,6 +71,79 @@ router.get("/steam/search", async (req, res) => {
 
   } catch (err) {
     console.error("Steam 검색 오류:", err.message);
+
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+router.get("/steam/top100", async (req, res) => {
+  try {
+    const response = await axios.get(
+      "https://store.steampowered.com/search/results/",
+      {
+        params: {
+          query: "",
+          start: 0,
+          count: 100,
+          filter: "topsellers",
+          cc: "kr",
+          l: "koreana",
+          infinite: 1
+        },
+        headers: {
+          "User-Agent": "Mozilla/5.0"
+        },
+        timeout: 10000
+      }
+    );
+
+    const html = response.data.results_html || "";
+    const $ = cheerio.load(html);
+    const results = [];
+
+    $("a.search_result_row").each((i, el) => {
+      const appid = $(el).attr("data-ds-appid");
+      const name = $(el).find(".title").text().trim();
+      const image = $(el).find("img").attr("src") || "";
+
+      const discountText = $(el).find(".discount_pct").text().trim();
+      const discount = discountText
+        ? Number(discountText.replace(/[^0-9]/g, ""))
+        : 0;
+
+      const saleText = $(el).find(".discount_final_price").text().trim();
+      const originalText = $(el).find(".discount_original_price").text().trim();
+
+      const salePrice = saleText
+        ? Number(saleText.replace(/[^0-9]/g, ""))
+        : null;
+
+      const originalPrice = originalText
+        ? Number(originalText.replace(/[^0-9]/g, ""))
+        : salePrice;
+
+      results.push({
+        rank: i + 1,
+        appid,
+        name,
+        image,
+        originalPrice,
+        salePrice,
+        discount
+      });
+    });
+
+    res.json({
+      success: true,
+      count: results.length,
+      results
+    });
+
+  } catch (err) {
+    console.error("TOP100 조회 오류:", err.message);
 
     res.status(500).json({
       success: false,

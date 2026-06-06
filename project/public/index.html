@@ -39,7 +39,7 @@
         <span id="username"></span>
         <a href="/mypage" class="mypage-btn">내정보</a>
         <button id="logoutBtn" type="button">로그아웃</button>
-    </div>
+      </div>
     </div>
   </header>
 
@@ -47,13 +47,18 @@
     <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e" alt="banner">
     <div class="banner-text">
       <h1>🔥 지금 할인 중!</h1>
-      <p>장르별 할인 게임을 확인하세요</p>
+      <p>Steam 게임 할인 정보 확인</p>
     </div>
   </section>
 
-  <section class="game-section">
+  <section id="searchResultSection" class="game-section" style="display:none;">
     <h2>검색 결과</h2>
     <div id="gameList" class="game-grid"></div>
+  </section>
+
+  <section class="game-section">
+    <h2>🔥 Steam 인기순위 TOP 100</h2>
+    <div id="top100List" class="game-grid"></div>
   </section>
 
   <script src="/script.js"></script>

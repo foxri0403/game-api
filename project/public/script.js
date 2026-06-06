@@ -9,6 +9,7 @@ const genreSelect = document.getElementById("genreSelect");
 const searchBtn = document.getElementById("searchBtn");
 const gameList = document.getElementById("gameList");
 const top100List = document.getElementById("top100List");
+const searchResultSection = document.getElementById("searchResultSection");
 
 const savedUser = localStorage.getItem("loggedInUser");
 
@@ -26,7 +27,7 @@ if (logoutBtn) {
   });
 }
 
-function formatWon(price) {
+function formatPrice(price) {
   if (price === null || price === undefined) return "가격 정보 없음";
   if (Number(price) === 0) return "무료";
   return `₩${Number(price).toLocaleString()}`;
@@ -54,145 +55,71 @@ async function searchSteam() {
     return;
   }
 
+  if (searchResultSection) {
+    searchResultSection.style.display = "block";
+  }
+
   gameList.innerHTML = "<p>검색 중...</p>";
 
   try {
-    const [steamRes, directgRes] = await Promise.all([
-      fetch(`/api/steam/search?q=${encodeURIComponent(keyword)}&genre=${encodeURIComponent(genre)}`),
-      fetch(`/api/directg/search?q=${encodeURIComponent(keyword)}`)
-    ]);
+    const res = await fetch(
+      `/api/steam/search?q=${encodeURIComponent(keyword)}&genre=${encodeURIComponent(genre)}`
+    );
 
-    const steamData = await steamRes.json();
-    const directgData = await directgRes.json();
+    const data = await res.json();
 
-    const steamResults = steamData.success ? steamData.results || [] : [];
-    const directgResults = directgData.success ? directgData.results || [] : [];
+    if (!data.success) {
+      gameList.innerHTML = `<p>오류: ${data.message || data.error}</p>`;
+      return;
+    }
 
-    if (steamResults.length === 0 && directgResults.length === 0) {
+    if (!data.results || data.results.length === 0) {
       gameList.innerHTML = "<p>검색 결과 없음</p>";
       return;
     }
 
-    const allGames = steamResults.map(steamGame => {
-      const matchedDirectg = directgResults.find(dg =>
-        dg.name &&
-        steamGame.name &&
-        dg.name.toLowerCase().includes(steamGame.name.toLowerCase().slice(0, 6))
-      );
-
-      return {
-        steam: steamGame,
-        directg: matchedDirectg || null
-      };
-    });
-
-    directgResults.forEach(dg => {
-      const alreadyMatched = allGames.some(item => item.directg && item.directg.name === dg.name);
-      if (!alreadyMatched) {
-        allGames.push({ steam: null, directg: dg });
-      }
-    });
-
-    gameList.innerHTML = allGames.map(item => {
-      const steam = item.steam;
-      const directg = item.directg;
-
-      const mainName = steam?.name || directg?.name || "이름 없음";
-      const mainImage = steam?.image || directg?.image || "";
-      const appid = steam?.appid || 0;
-
-      const safeName = escapeText(mainName);
-      const safeImage = escapeText(mainImage);
-
-      const steamSalePrice = steam?.salePrice ?? steam?.price ?? null;
-      const steamOriginalPrice = steam?.originalPrice ?? steamSalePrice;
-      const steamDiscount = steam?.discount || 0;
-
-      const directgSalePrice = directg?.salePrice ?? null;
-      const directgOriginalPrice = directg?.originalPrice ?? directgSalePrice;
-      const directgDiscount = directg?.discount || 0;
-
-      const discountStores = [];
-      if (steamDiscount > 0) discountStores.push(`Steam ${steamDiscount}% 할인`);
-      if (directgDiscount > 0) discountStores.push(`DirectG ${directgDiscount}% 할인`);
+    gameList.innerHTML = data.results.map(g => {
+      const salePrice = g.salePrice ?? g.price ?? null;
+      const originalPrice = g.originalPrice ?? salePrice;
+      const discount = g.discount || 0;
+      const safeName = escapeText(g.name);
+      const safeImage = escapeText(g.image || "");
 
       return `
         <div class="game-card">
+          <a
+            href="https://store.steampowered.com/app/${g.appid}"
+            target="_blank"
+            class="game-link"
+          >
+            <img src="${g.image}" alt="${g.name}">
+            <h3>${g.name}</h3>
+          </a>
+
+          <button
+            class="wishlist-btn"
+            type="button"
+            onclick="addWishlist(${g.appid}, '${safeName}', '${safeImage}', ${salePrice})">
+            ❤️ 찜하기
+          </button>
+
           ${
-            steam
+            discount > 0
               ? `
-                <a href="https://store.steampowered.com/app/${appid}" target="_blank" class="game-link">
-                  <img src="${mainImage}" alt="${mainName}">
-                  <h3>${mainName}</h3>
-                </a>
+                <p class="discount">🔥 ${discount}% 할인</p>
+                <p class="original-price">
+                  원가: <del>${formatSteamPrice(originalPrice)}</del>
+                </p>
+                <p class="sale-price">
+                  현재 가격: ${formatSteamPrice(salePrice)}
+                </p>
               `
               : `
-                <a href="${directg?.url || "#"}" target="_blank" class="game-link">
-                  <img src="${mainImage}" alt="${mainName}">
-                  <h3>${mainName}</h3>
-                </a>
+                <p class="discount no-sale">할인 없음</p>
+                <p class="sale-price">
+                  가격: ${formatSteamPrice(salePrice)}
+                </p>
               `
-          }
-
-          ${
-            steam
-              ? `
-                <button
-                  class="wishlist-btn"
-                  type="button"
-                  onclick="addWishlist(${appid}, '${safeName}', '${safeImage}', ${steamSalePrice})">
-                  ❤️ 찜하기
-                </button>
-              `
-              : ""
-          }
-
-          <div class="price-box">
-            <h4>Steam</h4>
-            ${
-              steam
-                ? `
-                  ${
-                    steamDiscount > 0
-                      ? `<p class="discount">🔥 Steam ${steamDiscount}% 할인 중</p>`
-                      : `<p class="discount no-sale">Steam 할인 없음</p>`
-                  }
-                  <p>원가: ${
-                    steamDiscount > 0
-                      ? `<del>${formatSteamPrice(steamOriginalPrice)}</del>`
-                      : formatSteamPrice(steamOriginalPrice)
-                  }</p>
-                  <p class="sale-price">현재 가격: ${formatSteamPrice(steamSalePrice)}</p>
-                `
-                : `<p>Steam 검색 결과 없음</p>`
-            }
-          </div>
-
-          <div class="price-box">
-            <h4>DirectG</h4>
-            ${
-              directg
-                ? `
-                  ${
-                    directgDiscount > 0
-                      ? `<p class="discount">🔥 DirectG ${directgDiscount}% 할인 중</p>`
-                      : `<p class="discount no-sale">DirectG 할인 없음</p>`
-                  }
-                  <p>원가: ${
-                    directgDiscount > 0
-                      ? `<del>${formatWon(directgOriginalPrice)}</del>`
-                      : formatWon(directgOriginalPrice)
-                  }</p>
-                  <p class="sale-price">현재 가격: ${formatWon(directgSalePrice)}</p>
-                `
-                : `<p>DirectG 검색 결과 없음</p>`
-            }
-          </div>
-
-          ${
-            discountStores.length > 0
-              ? `<p class="discount-store">할인 중인 곳: ${discountStores.join(", ")}</p>`
-              : `<p class="discount no-sale">현재 할인 중인 스토어 없음</p>`
           }
         </div>
       `;
@@ -213,6 +140,11 @@ async function addWishlist(appid, gameName, gameImage, currentPrice) {
   }
 
   const userId = user.user_id || user.id;
+
+  if (!userId) {
+    alert("로그인 정보에 user_id가 없어.");
+    return;
+  }
 
   try {
     const res = await fetch("/api/wishlist", {
@@ -238,6 +170,7 @@ async function addWishlist(appid, gameName, gameImage, currentPrice) {
     }
 
   } catch (err) {
+    console.error("찜하기 실패:", err);
     alert("찜하기 요청 실패");
   }
 }
@@ -258,7 +191,11 @@ async function loadTop100() {
 
     top100List.innerHTML = data.results.map(g => `
       <div class="game-card">
-        <a href="https://store.steampowered.com/app/${g.appid}" target="_blank" class="game-link">
+        <a
+          href="https://store.steampowered.com/app/${g.appid}"
+          target="_blank"
+          class="game-link"
+        >
           <img src="${g.image}" alt="${g.name}">
           <h3>${g.rank}. ${g.name}</h3>
         </a>
@@ -267,18 +204,25 @@ async function loadTop100() {
           g.discount > 0
             ? `
               <p class="discount">🔥 ${g.discount}% 할인</p>
-              <p class="original-price">원가: <del>${formatWon(g.originalPrice)}</del></p>
-              <p class="sale-price">현재 가격: ${formatWon(g.salePrice)}</p>
+              <p class="original-price">
+                원가: <del>${formatPrice(g.originalPrice)}</del>
+              </p>
+              <p class="sale-price">
+                현재 가격: ${formatPrice(g.salePrice)}
+              </p>
             `
             : `
               <p class="discount no-sale">할인 없음</p>
-              <p class="sale-price">가격: ${formatWon(g.salePrice)}</p>
+              <p class="sale-price">
+                가격: ${formatPrice(g.salePrice)}
+              </p>
             `
         }
       </div>
     `).join("");
 
   } catch (err) {
+    console.error("TOP100 불러오기 실패:", err);
     top100List.innerHTML = "<p>요청 실패</p>";
   }
 }
@@ -289,7 +233,9 @@ if (searchBtn) {
 
 if (searchInput) {
   searchInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") searchSteam();
+    if (e.key === "Enter") {
+      searchSteam();
+    }
   });
 }
 
