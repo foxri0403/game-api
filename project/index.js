@@ -1,4 +1,4 @@
-// 🔥 서버 죽는 원인 추적용 (필수)
+// 🔥 서버 죽는 원인 추적용
 process.on("uncaughtException", (err) => {
   console.error("🔥 치명적 에러:", err);
 });
@@ -10,18 +10,27 @@ process.on("unhandledRejection", (err) => {
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const { Pool } = require("pg");
 
 const app = express();
+
+// 🔧 PostgreSQL 연결
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
 
 // 🔧 기본 미들웨어
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 🔧 정적 파일 (HTML/CSS)
+// 🔧 정적 파일
 app.use(express.static(path.join(__dirname, "public")));
 
-// 🔥 라우트 안전하게 로드 (하나라도 터지면 로그 출력)
+// 🔥 라우트 안전하게 로드
 let steamRoutes;
 let authRoutes;
 let gameRoutes;
@@ -60,7 +69,40 @@ app.get("/login", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
-// 🔧 API 라우트 연결 (로드된 것만 연결)
+// 🔥 WISHLIST + ALERTS 테이블 생성용 임시 라우트
+app.get("/init-wishlist", async (req, res) => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS WISHLIST (
+        wishlist_id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        appid INTEGER NOT NULL,
+        game_name VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, appid)
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ALERTS (
+        alert_id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        appid INTEGER NOT NULL,
+        game_name VARCHAR(255),
+        message TEXT,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    res.send("WISHLIST, ALERTS 테이블 생성 완료");
+  } catch (err) {
+    console.error("❌ 테이블 생성 실패:", err);
+    res.status(500).send(err.message);
+  }
+});
+
+// 🔧 API 라우트 연결
 if (steamRoutes) {
   app.use("/api", steamRoutes);
 }
@@ -73,7 +115,7 @@ if (gameRoutes) {
   app.use("/", gameRoutes);
 }
 
-// 🔥 서버 실행 (Render 필수)
+// 🔥 서버 실행
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {

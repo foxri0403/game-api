@@ -26,7 +26,11 @@ if (logoutBtn) {
 }
 
 function formatPrice(price) {
-  if (!price || price <= 0) {
+  if (price === 0) {
+    return "무료";
+  }
+
+  if (!price || price < 0) {
     return "가격 정보 없음";
   }
 
