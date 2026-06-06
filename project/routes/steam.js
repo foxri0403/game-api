@@ -3,12 +3,10 @@ const axios = require("axios");
 
 const router = express.Router();
 
-// 테스트
 router.get("/steam/test", (req, res) => {
   res.json({ success: true });
 });
 
-// Steam 검색
 router.get("/steam/search", async (req, res) => {
   try {
     const keyword = (req.query.q || "").trim();
@@ -27,7 +25,6 @@ router.get("/steam/search", async (req, res) => {
       l: "koreana"
     };
 
-    // 장르가 선택된 경우 Steam 태그 값 추가
     if (genre) {
       params.tags = genre;
     }
@@ -43,9 +40,22 @@ router.get("/steam/search", async (req, res) => {
     const items = response.data.items || [];
 
     const results = items.map(game => {
-      const salePrice = game.price?.final || 0;
-      const originalPrice = game.price?.initial || salePrice;
-      const discount = game.price?.discount_percent || 0;
+      let salePrice = null;
+      let originalPrice = null;
+      let discount = 0;
+
+      if (game.price) {
+        salePrice = game.price.final ?? null;
+        originalPrice = game.price.initial ?? salePrice;
+        discount =
+          game.price.discount_percent ??
+          game.price.discount_pct ??
+          0;
+      }
+
+      if (!discount && originalPrice && salePrice && originalPrice > salePrice) {
+        discount = Math.round((1 - salePrice / originalPrice) * 100);
+      }
 
       return {
         appid: game.id,
@@ -64,7 +74,7 @@ router.get("/steam/search", async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Steam 검색 오류:", err);
+    console.error("Steam 검색 오류:", err.message);
 
     res.status(500).json({
       success: false,

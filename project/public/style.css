@@ -5,7 +5,7 @@ body {
   color: white;
 }
 
-/* 🔷 상단바 */
+/* 상단바 */
 .header {
   display: flex;
   justify-content: space-between;
@@ -19,11 +19,26 @@ body {
   font-weight: bold;
 }
 
+.search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .search {
-  width: 300px;
+  width: 260px;
   padding: 10px;
   border-radius: 20px;
   border: none;
+}
+
+.search-btn {
+  padding: 10px 15px;
+  border-radius: 10px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
 }
 
 .nav-right a {
@@ -41,7 +56,7 @@ body {
   color: white;
 }
 
-/* 🔷 배너 */
+/* 배너 */
 .banner {
   position: relative;
   height: 300px;
@@ -61,42 +76,21 @@ body {
   transform: translateY(-50%);
 }
 
-/* 🔷 게임 리스트 */
+/* 게임 리스트 */
 .game-section {
   padding: 30px;
 }
 
 .game-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
-}
-
-.game-card {
-  background: #1e293b;
-  padding: 10px;
-  border-radius: 10px;
-  text-align: center;
-}
-
-.game-card img {
-  width: 100%;
-  border-radius: 10px;
-}
-.search-btn {
-  padding: 10px 15px;
-  margin-left: 5px;
-  border-radius: 10px;
-  border: none;
-  background: #2563eb;
-  color: white;
-  cursor: pointer;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 22px;
 }
 
 .game-card {
   background: #1e293b;
   padding: 15px;
-  border-radius: 10px;
+  border-radius: 12px;
   text-align: center;
 }
 
@@ -105,13 +99,73 @@ body {
   border-radius: 10px;
 }
 
-.price {
-  font-size: 18px;
+.game-card h3 {
+  color: white;
+}
+
+.game-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.game-link:hover h3 {
+  text-decoration: underline;
+}
+
+.wishlist-btn {
+  margin: 8px 0;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.price-box {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #111827;
+  border: 1px solid #374151;
+  color: white;
+}
+
+.price-box h4 {
+  margin: 0 0 8px 0;
+  color: #93c5fd;
+}
+
+.price-box p {
+  color: white;
+}
+
+.price-box del {
+  color: #9ca3af;
+}
+
+.sale-price {
+  color: #22c55e;
   font-weight: bold;
 }
 
+.original-price {
+  color: #d1d5db;
+}
+
 .discount {
-  color: red;
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.no-sale {
+  color: #9ca3af;
+}
+
+.discount-store {
+  margin-top: 12px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #7f1d1d;
+  color: white;
   font-weight: bold;
 }
 
@@ -122,39 +176,4 @@ body {
   padding: 8px 12px;
   border-radius: 6px;
   margin: 0 8px;
-}
-
-.game-link {
-  text-decoration: none;
-  color: inherit;
-}
-
-.game-link:hover h3 {
-  text-decoration: underline;
-}
-
-.price-box {
-  margin-top: 12px;
-  padding: 10px;
-  border-radius: 8px;
-  background: #f3f4f6;
-}
-
-.price-box h4 {
-  margin: 0 0 8px 0;
-}
-
-.discount-store {
-  margin-top: 12px;
-  color: #dc2626;
-  font-weight: bold;
-}
-
-.game-link {
-  text-decoration: none;
-  color: inherit;
-}
-
-.game-link:hover h3 {
-  text-decoration: underline;
 }
