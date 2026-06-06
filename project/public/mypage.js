@@ -17,9 +17,19 @@ myEmail.textContent = user.email || "정보 없음";
 myUserId.textContent = userId || "정보 없음";
 
 function formatPrice(price) {
-  if (price === 0) return "무료";
-  if (!price || price < 0) return "가격 정보 없음";
-  return `₩${(price / 100).toLocaleString()}`;
+  if (price === null || price === undefined) {
+    return "가격 정보 없음";
+  }
+
+  if (Number(price) === 0) {
+    return "무료";
+  }
+
+  if (Number(price) < 0) {
+    return "가격 정보 없음";
+  }
+
+  return `₩${(Number(price) / 100).toLocaleString()}`;
 }
 
 async function loadWishlist() {
@@ -47,9 +57,24 @@ async function loadWishlist() {
 
         <h3>${game.game_name}</h3>
 
-        <p class="sale-price">
-          현재 가격: ${formatPrice(game.current_price || 0)}
-        </p>
+        ${
+          game.discount > 0
+            ? `
+              <p class="discount">🔥 ${game.discount}% 할인 중</p>
+              <p class="original-price">
+                원가: <del>${formatPrice(game.original_price)}</del>
+              </p>
+              <p class="sale-price">
+                현재 가격: ${formatPrice(game.current_price)}
+              </p>
+            `
+            : `
+              <p class="discount no-sale">할인 없음</p>
+              <p class="sale-price">
+                현재 가격: ${formatPrice(game.current_price)}
+              </p>
+            `
+        }
 
         <button onclick="deleteWishlist(${game.appid})">
           삭제
