@@ -6,6 +6,7 @@ const username = document.getElementById("username");
 const logoutBtn = document.getElementById("logoutBtn");
 const searchInput = document.getElementById("searchInput");
 const genreSelect = document.getElementById("genreSelect");
+const priceSelect = document.getElementById("priceSelect");
 const searchBtn = document.getElementById("searchBtn");
 const gameList = document.getElementById("gameList");
 const top100List = document.getElementById("top100List");
@@ -46,12 +47,49 @@ function escapeText(text) {
     .replace(/"/g, "&quot;");
 }
 
+function filterByPrice(games, priceRange) {
+  if (!priceRange) return games;
+
+  return games.filter(g => {
+    const price = g.salePrice ?? g.price ?? null;
+
+    if (price === null || price === undefined) {
+      return false;
+    }
+
+    const won = Number(price) / 100;
+
+    if (priceRange === "free") {
+      return won === 0;
+    }
+
+    if (priceRange === "under10000") {
+      return won > 0 && won <= 10000;
+    }
+
+    if (priceRange === "10000-30000") {
+      return won >= 10000 && won <= 30000;
+    }
+
+    if (priceRange === "30000-50000") {
+      return won >= 30000 && won <= 50000;
+    }
+
+    if (priceRange === "over50000") {
+      return won >= 50000;
+    }
+
+    return true;
+  });
+}
+
 async function searchSteam() {
   const keyword = searchInput ? searchInput.value.trim() : "";
   const genre = genreSelect ? genreSelect.value : "";
+  const priceRange = priceSelect ? priceSelect.value : "";
 
-  if (!keyword && !genre) {
-    alert("검색어 또는 장르를 선택해");
+  if (!keyword && !genre && !priceRange) {
+    alert("검색어, 장르 또는 가격대를 선택해");
     return;
   }
 
@@ -73,12 +111,16 @@ async function searchSteam() {
       return;
     }
 
-    if (!data.results || data.results.length === 0) {
+    let results = data.results || [];
+
+    results = filterByPrice(results, priceRange);
+
+    if (results.length === 0) {
       gameList.innerHTML = "<p>검색 결과 없음</p>";
       return;
     }
 
-    gameList.innerHTML = data.results.map(g => {
+    gameList.innerHTML = results.map(g => {
       const salePrice = g.salePrice ?? g.price ?? null;
       const originalPrice = g.originalPrice ?? salePrice;
       const discount = g.discount || 0;
