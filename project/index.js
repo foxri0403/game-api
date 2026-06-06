@@ -34,6 +34,7 @@ app.use(express.static(path.join(__dirname, "public")));
 let steamRoutes;
 let authRoutes;
 let gameRoutes;
+let wishlistRoutes;
 
 try {
   steamRoutes = require("./routes/steam");
@@ -54,6 +55,13 @@ try {
   console.log("✅ gameRoutes 로드 성공");
 } catch (err) {
   console.error("❌ gameRoutes 로드 실패:", err);
+}
+
+try {
+  wishlistRoutes = require("./routes/wishlist");
+  console.log("✅ wishlistRoutes 로드 성공");
+} catch (err) {
+  console.error("❌ wishlistRoutes 로드 실패:", err);
 }
 
 // 🔧 페이지 라우트
@@ -109,6 +117,10 @@ if (steamRoutes) {
 
 if (authRoutes) {
   app.use("/api", authRoutes);
+}
+
+if (wishlistRoutes) {
+  app.use("/api", wishlistRoutes);
 }
 
 if (gameRoutes) {

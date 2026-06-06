@@ -37,6 +37,13 @@ function formatPrice(price) {
   return `₩${(price / 100).toLocaleString()}`;
 }
 
+function escapeText(text) {
+  return String(text || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/"/g, "&quot;");
+}
+
 async function searchSteam() {
   const keyword = searchInput ? searchInput.value.trim() : "";
   const genre = genreSelect ? genreSelect.value : "";
@@ -69,12 +76,20 @@ async function searchSteam() {
       const salePrice = g.salePrice || g.price || 0;
       const discount = g.discount || 0;
       const originalPrice = g.originalPrice || salePrice;
+      const safeName = escapeText(g.name);
 
       if (discount > 0) {
         return `
           <div class="game-card">
             <img src="${g.image}" alt="${g.name}">
             <h3>${g.name}</h3>
+
+            <button
+              class="wishlist-btn"
+              type="button"
+              onclick="addWishlist(${g.appid}, '${safeName}')">
+              ❤️ 찜하기
+            </button>
 
             <p class="discount">🔥 ${discount}% 할인</p>
 
@@ -94,6 +109,13 @@ async function searchSteam() {
           <img src="${g.image}" alt="${g.name}">
           <h3>${g.name}</h3>
 
+          <button
+            class="wishlist-btn"
+            type="button"
+            onclick="addWishlist(${g.appid}, '${safeName}')">
+            ❤️ 찜하기
+          </button>
+
           <p class="discount no-sale">할인 없음</p>
 
           <p class="original-price">
@@ -106,6 +128,49 @@ async function searchSteam() {
   } catch (err) {
     console.error("검색 실패:", err);
     gameList.innerHTML = "<p>요청 실패</p>";
+  }
+}
+
+async function addWishlist(appid, gameName) {
+  const user = JSON.parse(localStorage.getItem("loggedInUser"));
+
+  if (!user) {
+    alert("로그인 후 찜하기를 사용할 수 있어.");
+    return;
+  }
+
+  const userId = user.user_id || user.id;
+
+  if (!userId) {
+    alert("로그인 정보에 user_id가 없어. 로그인 코드를 확인해야 해.");
+    console.log("현재 로그인 정보:", user);
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/wishlist", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        appid,
+        game_name: gameName
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("❤️ 찜 목록에 추가됨");
+    } else {
+      alert(data.message || data.error || "찜하기 실패");
+    }
+
+  } catch (err) {
+    console.error("찜하기 실패:", err);
+    alert("찜하기 요청 실패");
   }
 }
 
