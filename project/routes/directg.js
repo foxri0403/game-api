@@ -10,17 +10,16 @@ function parsePrice(text) {
   return num ? Number(num) : null;
 }
 
-function makeAbsoluteUrl(url) {
-  if (!url) return "";
-  if (url.startsWith("http")) return url;
-  if (url.startsWith("//")) return "https:" + url;
-  if (url.startsWith("/")) return "https://directg.net" + url;
-  return "https://directg.net/" + url;
+function normalize(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[-:：]/g, "");
 }
 
 router.get("/directg/search", async (req, res) => {
   try {
-    const keyword = (req.query.q || "").trim().toLowerCase();
+    const keyword = (req.query.q || "").trim();
 
     if (!keyword) {
       return res.status(400).json({
@@ -37,72 +36,90 @@ router.get("/directg/search", async (req, res) => {
     });
 
     const $ = cheerio.load(response.data);
+
+    const bodyText = $("body")
+      .text()
+      .replace(/\r/g, "\n")
+      .replace(/\t/g, "\n");
+
+    const lines = bodyText
+      .split("\n")
+      .map(v => v.trim())
+      .filter(Boolean);
+
     const results = [];
+    const key = normalize(keyword);
 
-    $("a").each((i, el) => {
-      const $a = $(el);
-      const text = $a.text().replace(/\s+/g, " ").trim();
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
 
-      if (!text) return;
-      if (!text.toLowerCase().includes(keyword)) return;
+      if (!normalize(line).includes(key)) continue;
 
-      const img = $a.find("img").first();
-      const image = img.attr("src") || img.attr("data-src") || "";
-      const imgAlt = img.attr("alt") || "";
+      const name = line;
 
-      let name = imgAlt.trim();
-
-      if (!name) {
-        const lines = text
-          .split(/\s{2,}|\n/)
-          .map(v => v.trim())
-          .filter(Boolean);
-
-        name = lines.find(line =>
-          line.toLowerCase().includes(keyword) &&
-          !line.includes("종료") &&
-          !line.includes("코드") &&
-          !line.includes("GAME")
-        ) || "";
-      }
-
-      if (!name) return;
-
-      const discountMatch =
-        text.match(/-?\s*(\d+)\s*%/) ||
-        text.match(/(\d+)\s*%/);
-
-      const discount = discountMatch ? Number(discountMatch[1]) : 0;
-
-      const prices = text.match(/[0-9]{1,3}(?:,[0-9]{3})+/g) || [];
-
+      let discount = 0;
       let originalPrice = null;
       let salePrice = null;
 
-      if (prices.length >= 2 && discount > 0) {
-        originalPrice = parsePrice(prices[prices.length - 2]);
-        salePrice = parsePrice(prices[prices.length - 1]);
-      } else if (prices.length >= 1) {
-        salePrice = parsePrice(prices[prices.length - 1]);
-        originalPrice = salePrice;
+      const nearLines = lines.slice(i, i + 8);
+
+      for (const l of nearLines) {
+        const discountMatch = l.match(/-?(\d+)\s*%/);
+
+        if (discountMatch) {
+          discount = Number(discountMatch[1]);
+        }
+
+        const inlineSale = l.match(/(\d+)\s*%\s*([0-9,]+)\s*~~([0-9,]+)~~/);
+        if (inlineSale) {
+          discount = Number(inlineSale[1]);
+          salePrice = parsePrice(inlineSale[2]);
+          originalPrice = parsePrice(inlineSale[3]);
+          break;
+        }
+
+        const strikeSale = l.match(/~~([0-9,]+)~~\s*([0-9,]+)/);
+        if (strikeSale) {
+          originalPrice = parsePrice(strikeSale[1]);
+          salePrice = parsePrice(strikeSale[2]);
+          break;
+        }
+      }
+
+      if (salePrice === null) {
+        const prices = nearLines
+          .join(" ")
+          .match(/[0-9]{1,3}(?:,[0-9]{3})+/g) || [];
+
+        if (discount > 0 && prices.length >= 2) {
+          originalPrice = parsePrice(prices[0]);
+          salePrice = parsePrice(prices[1]);
+        } else if (prices.length >= 1) {
+          salePrice = parsePrice(prices[0]);
+          originalPrice = salePrice;
+        }
+      }
+
+      if (discount === 0 && originalPrice && salePrice && originalPrice > salePrice) {
+        discount = Math.round((1 - salePrice / originalPrice) * 100);
       }
 
       results.push({
         store: "DirectG",
         name,
-        image: makeAbsoluteUrl(image),
-        url: makeAbsoluteUrl($a.attr("href")),
+        image: "",
+        url: "https://directg.net/",
         originalPrice,
         salePrice,
         discount
       });
-    });
+    }
 
     const unique = [];
     const seen = new Set();
 
     for (const item of results) {
-      const key = item.name + item.salePrice;
+      const key = item.name;
 
       if (!seen.has(key)) {
         seen.add(key);
