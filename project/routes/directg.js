@@ -10,6 +10,14 @@ function parsePrice(text) {
   return num ? Number(num) : null;
 }
 
+function makeAbsoluteUrl(url) {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  if (url.startsWith("//")) return "https:" + url;
+  if (url.startsWith("/")) return "https://directg.net" + url;
+  return "https://directg.net/" + url;
+}
+
 router.get("/directg/search", async (req, res) => {
   try {
     const keyword = (req.query.q || "").trim().toLowerCase();
@@ -21,7 +29,7 @@ router.get("/directg/search", async (req, res) => {
       });
     }
 
-    const response = await axios.get("https://directg.net/", {
+    const response = await axios.get("https://directg.net/index.php", {
       headers: {
         "User-Agent": "Mozilla/5.0"
       },
@@ -31,49 +39,81 @@ router.get("/directg/search", async (req, res) => {
     const $ = cheerio.load(response.data);
     const results = [];
 
-    $("img").each((i, img) => {
-      const image = $(img).attr("src") || "";
-      const name = ($(img).attr("alt") || "").trim();
+    $("a").each((i, el) => {
+      const $a = $(el);
+      const text = $a.text().replace(/\s+/g, " ").trim();
+
+      if (!text) return;
+      if (!text.toLowerCase().includes(keyword)) return;
+
+      const img = $a.find("img").first();
+      const image = img.attr("src") || img.attr("data-src") || "";
+      const imgAlt = img.attr("alt") || "";
+
+      let name = imgAlt.trim();
+
+      if (!name) {
+        const lines = text
+          .split(/\s{2,}|\n/)
+          .map(v => v.trim())
+          .filter(Boolean);
+
+        name = lines.find(line =>
+          line.toLowerCase().includes(keyword) &&
+          !line.includes("종료") &&
+          !line.includes("코드") &&
+          !line.includes("GAME")
+        ) || "";
+      }
 
       if (!name) return;
-      if (!name.toLowerCase().includes(keyword)) return;
 
-      const card = $(img).closest("a, li, div");
-      const text = card.text().replace(/\s+/g, " ").trim();
+      const discountMatch =
+        text.match(/-?\s*(\d+)\s*%/) ||
+        text.match(/(\d+)\s*%/);
 
-      const discountMatch = text.match(/(\d+)\s*%/);
       const discount = discountMatch ? Number(discountMatch[1]) : 0;
 
-      const prices = text.match(/[0-9,]+/g) || [];
+      const prices = text.match(/[0-9]{1,3}(?:,[0-9]{3})+/g) || [];
 
-      let salePrice = null;
       let originalPrice = null;
+      let salePrice = null;
 
       if (prices.length >= 2 && discount > 0) {
-        salePrice = parsePrice(prices[prices.length - 2]);
-        originalPrice = parsePrice(prices[prices.length - 1]);
+        originalPrice = parsePrice(prices[prices.length - 2]);
+        salePrice = parsePrice(prices[prices.length - 1]);
       } else if (prices.length >= 1) {
         salePrice = parsePrice(prices[prices.length - 1]);
         originalPrice = salePrice;
       }
 
-      const link = card.attr("href") || $(img).closest("a").attr("href") || "";
-
       results.push({
         store: "DirectG",
         name,
-        image: image.startsWith("http") ? image : `https://directg.net${image.startsWith("/") ? image : "/" + image}`,
-        url: link.startsWith("http") ? link : `https://directg.net${link.startsWith("/") ? link : "/" + link}`,
+        image: makeAbsoluteUrl(image),
+        url: makeAbsoluteUrl($a.attr("href")),
         originalPrice,
         salePrice,
         discount
       });
     });
 
+    const unique = [];
+    const seen = new Set();
+
+    for (const item of results) {
+      const key = item.name + item.salePrice;
+
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(item);
+      }
+    }
+
     res.json({
       success: true,
-      count: results.length,
-      results
+      count: unique.length,
+      results: unique
     });
 
   } catch (err) {
