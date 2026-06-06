@@ -31,6 +31,7 @@ let steamRoutes;
 let authRoutes;
 let gameRoutes;
 let wishlistRoutes;
+let directgRoutes;
 
 try {
   steamRoutes = require("./routes/steam");
@@ -58,6 +59,13 @@ try {
   console.log("✅ wishlistRoutes 로드 성공");
 } catch (err) {
   console.error("❌ wishlistRoutes 로드 실패:", err);
+}
+
+try {
+  directgRoutes = require("./routes/directg");
+  console.log("✅ directgRoutes 로드 성공");
+} catch (err) {
+  console.error("❌ directgRoutes 로드 실패:", err);
 }
 
 app.get("/", (req, res) => {
@@ -128,6 +136,10 @@ if (authRoutes) {
 
 if (wishlistRoutes) {
   app.use("/api", wishlistRoutes);
+}
+
+if (directgRoutes) {
+  app.use("/api", directgRoutes);
 }
 
 if (gameRoutes) {
