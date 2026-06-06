@@ -5,6 +5,7 @@ const userMenu = document.getElementById("userMenu");
 const username = document.getElementById("username");
 const logoutBtn = document.getElementById("logoutBtn");
 const searchInput = document.getElementById("searchInput");
+const genreSelect = document.getElementById("genreSelect");
 const searchBtn = document.getElementById("searchBtn");
 const gameList = document.getElementById("gameList");
 
@@ -34,16 +35,20 @@ function formatPrice(price) {
 
 async function searchSteam() {
   const keyword = searchInput ? searchInput.value.trim() : "";
+  const genre = genreSelect ? genreSelect.value : "";
 
-  if (!keyword) {
-    alert("검색어 입력해");
+  if (!keyword && !genre) {
+    alert("검색어 또는 장르를 선택해");
     return;
   }
 
   gameList.innerHTML = "<p>검색 중...</p>";
 
   try {
-    const res = await fetch(`/api/steam/search?q=${encodeURIComponent(keyword)}`);
+    const res = await fetch(
+      `/api/steam/search?q=${encodeURIComponent(keyword)}&genre=${encodeURIComponent(genre)}`
+    );
+
     const data = await res.json();
 
     if (!data.success) {
