@@ -100,10 +100,15 @@ async function searchSteam() {
   gameList.innerHTML = "<p>검색 중...</p>";
 
   try {
-    const res = await fetch(
-      `/api/steam/search?q=${encodeURIComponent(keyword)}&genre=${encodeURIComponent(genre)}`
-    );
+    let apiUrl = "";
 
+    if (priceRange && !keyword && !genre) {
+      apiUrl = "/api/steam/top100";
+    } else {
+      apiUrl = `/api/steam/search?q=${encodeURIComponent(keyword)}&genre=${encodeURIComponent(genre)}`;
+    }
+
+    const res = await fetch(apiUrl);
     const data = await res.json();
 
     if (!data.success) {
@@ -120,12 +125,13 @@ async function searchSteam() {
       return;
     }
 
-    gameList.innerHTML = results.map(g => {
+    gameList.innerHTML = results.map((g, index) => {
       const salePrice = g.salePrice ?? g.price ?? null;
       const originalPrice = g.originalPrice ?? salePrice;
       const discount = g.discount || 0;
       const safeName = escapeText(g.name);
       const safeImage = escapeText(g.image || "");
+      const rankText = g.rank ? `${g.rank}. ` : "";
 
       return `
         <div class="game-card">
@@ -135,7 +141,7 @@ async function searchSteam() {
             class="game-link"
           >
             <img src="${g.image}" alt="${g.name}">
-            <h3>${g.name}</h3>
+            <h3>${rankText}${g.name}</h3>
           </a>
 
           <button
