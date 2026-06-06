@@ -40,6 +40,26 @@ function formatSteamPrice(price) {
   return `₩${(Number(price) / 100).toLocaleString()}`;
 }
 
+function getWonPrice(game) {
+  const price = game.salePrice ?? game.price ?? null;
+
+  if (price === null || price === undefined) {
+    return null;
+  }
+
+  // TOP100 데이터는 rank가 있고 이미 원 단위
+  // 일반 Steam 검색 데이터는 100배 단위
+  return game.rank ? Number(price) : Number(price) / 100;
+}
+
+function formatGamePrice(game, price) {
+  if (game.rank) {
+    return formatPrice(price);
+  }
+
+  return formatSteamPrice(price);
+}
+
 function escapeText(text) {
   return String(text || "")
     .replace(/\\/g, "\\\\")
@@ -51,13 +71,11 @@ function filterByPrice(games, priceRange) {
   if (!priceRange) return games;
 
   return games.filter(g => {
-    const price = g.salePrice ?? g.price ?? null;
+    const won = getWonPrice(g);
 
-    if (price === null || price === undefined) {
+    if (won === null || won === undefined) {
       return false;
     }
-
-    const won = Number(price) / 100;
 
     if (priceRange === "free") {
       return won === 0;
@@ -125,7 +143,7 @@ async function searchSteam() {
       return;
     }
 
-    gameList.innerHTML = results.map((g, index) => {
+    gameList.innerHTML = results.map(g => {
       const salePrice = g.salePrice ?? g.price ?? null;
       const originalPrice = g.originalPrice ?? salePrice;
       const discount = g.discount || 0;
@@ -147,7 +165,7 @@ async function searchSteam() {
           <button
             class="wishlist-btn"
             type="button"
-            onclick="addWishlist(${g.appid}, '${safeName}', '${safeImage}', ${salePrice})">
+            onclick="addWishlist(${g.appid}, '${safeName}', '${safeImage}', ${g.rank ? salePrice * 100 : salePrice})">
             ❤️ 찜하기
           </button>
 
@@ -156,16 +174,16 @@ async function searchSteam() {
               ? `
                 <p class="discount">🔥 ${discount}% 할인</p>
                 <p class="original-price">
-                  원가: <del>${formatSteamPrice(originalPrice)}</del>
+                  원가: <del>${formatGamePrice(g, originalPrice)}</del>
                 </p>
                 <p class="sale-price">
-                  현재 가격: ${formatSteamPrice(salePrice)}
+                  현재 가격: ${formatGamePrice(g, salePrice)}
                 </p>
               `
               : `
                 <p class="discount no-sale">할인 없음</p>
                 <p class="sale-price">
-                  가격: ${formatSteamPrice(salePrice)}
+                  가격: ${formatGamePrice(g, salePrice)}
                 </p>
               `
           }
