@@ -84,6 +84,26 @@ app.get("/mypage", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "mypage.html"));
 });
 
+// USERS 테이블 생성용
+app.get("/init-users", async (req, res) => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS USERS (
+        user_id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        username VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    res.send("USERS 테이블 생성 완료");
+  } catch (err) {
+    console.error("❌ USERS 테이블 생성 실패:", err);
+    res.status(500).send(err.message);
+  }
+});
+
 app.get("/init-wishlist", async (req, res) => {
   try {
     await pool.query(`
